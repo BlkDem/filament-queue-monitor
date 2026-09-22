@@ -1,0 +1,101 @@
+<?php
+
+namespace Kilo\FilamentQueueMonitor;
+
+use Illuminate\Support\ServiceProvider;
+use Kilo\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
+use Kilo\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
+use Kilo\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
+use Kilo\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use Kilo\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+
+class FilamentQueueMonitorServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->mergeConfigFrom(
+            __DIR__ . '/resources/config/filament-queue-monitor.php',
+            'filament-queue-monitor'
+        );
+
+        $this->registerManager();
+        $this->registerMetricsStorage();
+        $this->registerEventListeners();
+
+        $this->commands([
+            Console\InstallCommand::class,
+            Console\PruneCommand::class,
+        ]);
+    }
+
+    public function boot(): void
+    {
+        $this->loadViewsFrom(
+            __DIR__ . '/resources/views',
+            'filament-queue-monitor'
+        );
+
+        if (config('filament-queue-monitor.enabled', true)) {
+            $this->loadMigrationsFrom(__DIR__ . '/Database/Migrations');
+
+            $this->publishes([
+                __DIR__ . '/Database/Migrations' => database_path('migrations'),
+            ], 'filament-queue-monitor-migrations');
+        }
+
+        $this->publishes([
+            __DIR__ . '/resources/config/filament-queue-monitor.php' => config_path('filament-queue-monitor.php'),
+        ], 'filament-queue-monitor-config');
+
+        $this->publishes([
+            __DIR__ . '/resources/views' => resource_path('views/vendor/filament-queue-monitor'),
+        ], 'filament-queue-monitor-views');
+    }
+
+    protected function registerManager(): void
+    {
+        $this->app->singleton(QueueMonitorManager::class, function ($app) {
+            return new QueueMonitorManager($app);
+        });
+
+        $this->app->bind(RedisQueueMonitorDriver::class, function () {
+            return new RedisQueueMonitorDriver();
+        });
+
+        $this->app->bind(DatabaseQueueMonitorDriver::class, function () {
+            return new DatabaseQueueMonitorDriver();
+        });
+    }
+
+    protected function registerMetricsStorage(): void
+    {
+        $this->app->singleton(MetricsStorage::class, function () {
+            return new MetricsStorage();
+        });
+    }
+
+    protected function registerEventListeners(): void
+    {
+        $events = $this->app->make('events');
+
+        $events->listen(
+            \Illuminate\Queue\Events\JobProcessing::class,
+            [RecordQueueMetrics::class, 'handleProcessing']
+        );
+
+        $events->listen(
+            \Illuminate\Queue\Events\JobProcessed::class,
+            [RecordQueueMetrics::class, 'handleProcessed']
+        );
+
+        $events->listen(
+            \Illuminate\Queue\Events\JobFailed::class,
+            [RecordQueueMetrics::class, 'handleFailed']
+        );
+
+        $events->listen(
+            \Illuminate\Queue\Events\JobExceptionOccurred::class,
+            [RecordQueueMetrics::class, 'handleExceptionOccurred']
+        );
+    }
+}
