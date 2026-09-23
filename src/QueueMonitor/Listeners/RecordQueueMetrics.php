@@ -55,6 +55,7 @@ class RecordQueueMetrics
             processed: 1,
             avgRuntime: $runtime,
             maxRuntime: $runtime,
+            job: $this->getJobName($event->job),
         );
     }
 
@@ -77,6 +78,7 @@ class RecordQueueMetrics
             failed: 1,
             avgRuntime: $runtime,
             maxRuntime: $runtime,
+            job: $this->getJobName($event->job),
         );
     }
 
@@ -103,5 +105,25 @@ class RecordQueueMetrics
         }
 
         return 'queue-monitor:start:'.md5($connectionName.':'.(string) $jobId);
+    }
+
+    protected function getJobName(Job $job): string
+    {
+        try {
+            $name = $job->resolveName();
+        } catch (Throwable) {
+            $name = null;
+        }
+
+        if (! is_string($name) || $name === '') {
+            try {
+                $payload = $job->payload();
+                $name = $payload['displayName'] ?? null;
+            } catch (Throwable) {
+                $name = null;
+            }
+        }
+
+        return is_string($name) && $name !== '' ? $name : 'unknown';
     }
 }

@@ -14,6 +14,13 @@ class Dashboard extends Page
         return 'filament-queue-monitor::pages.dashboard';
     }
 
+    protected static ?string $title = 'Queue Monitor';
+
+    public function getSubheading(): string | Htmlable | null
+    {
+        return 'Live view of your queues and recent job activity.';
+    }
+
     public static function getNavigationGroup(): ?string
     {
         $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
@@ -61,12 +68,20 @@ class Dashboard extends Page
 
     protected function getFooterWidgets(): array
     {
-        return (bool) config('filament-queue-monitor.enabled', true)
-            && (bool) config('filament-queue-monitor.metrics.enabled', true)
-            ? [Widgets\MetricsChartWidget::make([
-                'selectedPeriod' => $this->selectedPeriod,
-            ])]
+        $queueActivityWidgets = (bool) config('filament-queue-monitor.enabled', true)
+            ? [Widgets\QueueActivityWidget::make()]
             : [];
+
+        $historyWidgets = (bool) config('filament-queue-monitor.enabled', true)
+            && (bool) config('filament-queue-monitor.metrics.enabled', true)
+            ? [
+                Widgets\JobBreakdownWidget::make([
+                    'selectedPeriod' => $this->selectedPeriod,
+                ]),
+            ]
+            : [];
+
+        return [...$queueActivityWidgets, ...$historyWidgets];
     }
 
     public function updatedSelectedPeriod(): void

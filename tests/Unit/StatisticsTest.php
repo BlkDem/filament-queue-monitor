@@ -134,6 +134,78 @@ describe('Statistics', function () {
             ->and($metric->avg_runtime)->toBe(0.5);
     });
 
+    it('records the job name on JobProcessed', function () {
+        $storage = app(MetricsStorage::class);
+        $listener = new RecordQueueMetrics($storage);
+
+        $job = \Mockery::mock(Job::class);
+        $job->shouldReceive('getQueue')->andReturn('default');
+        $job->shouldReceive('resolveName')->andReturn('App\\Jobs\\ProcessOrder');
+        $job->shouldReceive('payload')->andReturn(json_encode(['displayName' => 'App\\Jobs\\ProcessOrder']));
+
+        $listener->handleProcessing(new JobProcessing('database', $job));
+        $listener->handleProcessed(new JobProcessed('database', $job));
+
+        $metric = DB::table('queue_monitor_metrics')->where('queue', 'default')->first();
+
+        expect($metric->job)->toBe('App\\Jobs\\ProcessOrder');
+    });
+
+    it('falls back to unknown job name', function () {
+        $storage = app(MetricsStorage::class);
+        $listener = new RecordQueueMetrics($storage);
+
+        $job = \Mockery::mock(Job::class);
+        $job->shouldReceive('getQueue')->andReturn('default');
+        $job->shouldReceive('payload')->andReturn(json_encode(['data' => []]));
+
+        $listener->handleProcessing(new JobProcessing('database', $job));
+        $listener->handleProcessed(new JobProcessed('database', $job));
+
+        $metric = DB::table('queue_monitor_metrics')->where('queue', 'default')->first();
+
+        expect($metric->job)->toBe('unknown');
+    });
+
+    it('defaults the job name to unknown on direct record', function () {
+        $storage = app(MetricsStorage::class);
+        $storage->record('database', 'default', now()->format('Y-m-d H:i:s'), 1, 0);
+
+        $metric = DB::table('queue_monitor_metrics')->where('queue', 'default')->first();
+
+        expect($metric->job)->toBe('unknown');
+    });
+
+    it('provides a job breakdown grouped by job, queue and connection', function () {
+        $storage = app(MetricsStorage::class);
+        $period = now()->startOfMinute()->format('Y-m-d H:i:s');
+
+        $storage->record('database', 'emails', $period, 10, 2, 0.5, 1.0, 'App\\Jobs\\SendEmail');
+        $storage->record('database', 'emails', $period, 5, 0, 0.6, 2.0, 'App\\Jobs\\SendEmail');
+        $storage->record('database', 'default', $period, 1, 1, 2.0, 3.0, 'App\\Jobs\\ProcessOrder');
+        $storage->record('redis', 'emails', $period, 3, 1, 1.0, 1.5, 'App\\Jobs\\SendEmail');
+
+        $breakdown = $storage->getJobBreakdown('today');
+
+        expect($breakdown)->toHaveCount(3);
+
+        $dbEmails = collect($breakdown)->first(
+            fn ($row) => $row->connection === 'database' && $row->queue === 'emails' && $row->job === 'App\\Jobs\\SendEmail'
+        );
+
+        expect((int) $dbEmails->processed)->toBe(15)
+            ->and((int) $dbEmails->failed)->toBe(2)
+            ->and((float) $dbEmails->avg_runtime)->toBeGreaterThan(0)
+            ->and((float) $dbEmails->max_runtime)->toBe(2.0);
+
+        $dbDefault = collect($breakdown)->first(
+            fn ($row) => $row->connection === 'database' && $row->queue === 'default' && $row->job === 'App\\Jobs\\ProcessOrder'
+        );
+
+        expect((int) $dbDefault->processed)->toBe(1)
+            ->and((int) $dbDefault->failed)->toBe(1);
+    });
+
     it('aggregates runtime statistics across updates', function () {
         $storage = app(MetricsStorage::class);
         $period = now()->startOfMinute()->format('Y-m-d H:i:s');

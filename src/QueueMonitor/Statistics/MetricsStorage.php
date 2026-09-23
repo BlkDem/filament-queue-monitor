@@ -11,6 +11,8 @@ class MetricsStorage
 
     protected ?bool $cachedTableExists = null;
 
+    protected ?bool $cachedJobColumnExists = null;
+
     public function __construct()
     {
         $this->table = config('filament-queue-monitor.metrics.table', 'queue_monitor_metrics')
@@ -49,6 +51,15 @@ class MetricsStorage
         return $this->cachedTableExists ??= Schema::hasTable($this->table);
     }
 
+    public function jobColumnExists(): bool
+    {
+        if (! $this->tableExists()) {
+            return false;
+        }
+
+        return $this->cachedJobColumnExists ??= Schema::hasColumn($this->table, 'job');
+    }
+
     public function record(
         string $connection,
         string $queue,
@@ -57,6 +68,7 @@ class MetricsStorage
         int $failed = 0,
         ?float $avgRuntime = null,
         ?float $maxRuntime = null,
+        ?string $job = null,
     ): void {
         if (! $this->isPackageEnabled() || ! $this->isEnabled() || ! $this->tableExists()) {
             return;
@@ -67,7 +79,7 @@ class MetricsStorage
         $failed = max(0, $failed);
         $now = now();
 
-        DB::table($this->table)->upsert([
+        $data = [
             'connection' => $connection,
             'queue' => $queue,
             'period' => $period,
@@ -77,7 +89,16 @@ class MetricsStorage
             'max_runtime' => $maxRuntime,
             'created_at' => $now,
             'updated_at' => $now,
-        ], ['connection', 'queue', 'period'], $this->upsertUpdates());
+        ];
+
+        $unique = ['connection', 'queue', 'period'];
+
+        if ($this->jobColumnExists()) {
+            $data['job'] = $job ?: 'unknown';
+            $unique[] = 'job';
+        }
+
+        DB::table($this->table)->upsert($data, $unique, $this->upsertUpdates());
     }
 
     public function getMetrics(string $period = 'today'): array
@@ -112,6 +133,32 @@ class MetricsStorage
             'processed' => (int) ($result->processed ?? 0),
             'failed' => (int) ($result->failed ?? 0),
         ];
+    }
+
+    public function getJobBreakdown(string $period = 'today'): array
+    {
+        if (! $this->isPackageEnabled() || ! $this->isEnabled() || ! $this->tableExists()) {
+            return [];
+        }
+
+        $query = DB::table($this->table);
+
+        $this->applyPeriodFilter($query, $this->normalizePeriod($period));
+
+        $jobSelect = $this->jobColumnExists()
+            ? 'COALESCE(NULLIF(job, \'\'), \'unknown\') as job'
+            : '\'unknown\' as job';
+
+        $groupBy = $this->jobColumnExists()
+            ? ['connection', 'queue', 'job']
+            : ['connection', 'queue'];
+
+        return $query
+            ->selectRaw("connection, queue, {$jobSelect}, SUM(processed) as processed, SUM(failed) as failed, AVG(avg_runtime) as avg_runtime, MAX(max_runtime) as max_runtime")
+            ->groupBy($groupBy)
+            ->orderByRaw('SUM(processed) DESC, SUM(failed) DESC')
+            ->get()
+            ->all();
     }
 
     public function prune(?int $retentionDays = null): int

@@ -9,6 +9,9 @@ use Kilo\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
 use Kilo\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use Kilo\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use Kilo\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
+use Kilo\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
+use Kilo\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
+use Kilo\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
 
 class FilamentQueueMonitorPlugin implements Plugin
 {
@@ -25,6 +28,12 @@ class FilamentQueueMonitorPlugin implements Plugin
             ViewQueue::class,
             ListJobs::class,
             ListFailedJobs::class,
+        ]);
+
+        $panel->widgets([
+            QueueStatsOverviewWidget::class,
+            QueueActivityWidget::class,
+            JobBreakdownWidget::class,
         ]);
 
         if ((bool) config('filament-queue-monitor.navigation.enabled', true)) {

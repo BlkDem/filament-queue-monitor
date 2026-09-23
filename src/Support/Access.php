@@ -25,7 +25,7 @@ final class Access
                 return false;
             }
 
-            return (bool) app('gate')->allows($authorize, [app('auth')->user()]);
+            return (bool) \Illuminate\Support\Facades\Gate::allows($authorize, [app('auth')->user()]);
         }
 
         return false;

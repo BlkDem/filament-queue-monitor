@@ -25,7 +25,7 @@
     </div>
 
     <div class="mt-6">
-        <a href="{{ \Filament\Pages\Page::getUrl(\Kilo\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs::class, ['queue' => $queue]) }}" class="text-primary-600 hover:text-primary-500">
+        <a href="{{ \Kilo\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs::getUrl(['queue' => $queue]) }}" class="text-primary-600 hover:text-primary-500">
             View Queued Jobs &rarr;
         </a>
     </div>

@@ -12,6 +12,7 @@ return [
         'enabled' => env('QUEUE_MONITOR_METRICS_ENABLED', true),
         'table' => env('QUEUE_MONITOR_METRICS_TABLE', 'queue_monitor_metrics'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
+        'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
     ],
 
     'navigation' => [

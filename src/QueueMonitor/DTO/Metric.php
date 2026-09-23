@@ -12,5 +12,6 @@ class Metric
         public readonly int $failed = 0,
         public readonly ?float $avgRuntime = null,
         public readonly ?float $maxRuntime = null,
+        public readonly string $job = 'unknown',
     ) {}
 }

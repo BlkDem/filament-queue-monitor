@@ -14,7 +14,62 @@ class QueueJob extends Model
 
     protected $keyType = 'string';
 
-    public function getTable()
+    public function getTable(): string
+    {
+        return $this->resolveQueueTable();
+    }
+
+    public function getConnectionName(): ?string
+    {
+        return $this->resolveQueueConnection();
+    }
+
+    public function getKeyName(): string
+    {
+        return 'id';
+    }
+
+    public function getNameAttribute(): string
+    {
+        if (blank($this->payload)) {
+            return 'Unknown';
+        }
+
+        try {
+            $data = json_decode((string) $this->payload, true, 512, JSON_THROW_ON_ERROR);
+            $jobData = is_array($data['data'] ?? null) ? $data['data'] : [];
+
+            $name = $data['displayName']
+                ?? $data['job']
+                ?? $jobData['commandName']
+                ?? null;
+
+            return is_string($name) && $name !== '' ? $name : 'Unknown';
+        } catch (\JsonException) {
+            return 'Unknown';
+        }
+    }
+
+    public function getStatusAttribute(): string
+    {
+        if ($this->reserved_at !== null) {
+            return 'processing';
+        }
+
+        if ((int) $this->available_at > time()) {
+            return 'delayed';
+        }
+
+        return 'pending';
+    }
+
+    protected function resolveQueueConnection(): string
+    {
+        return config("queue.connections.{$this->resolveQueueConnectionName()}.connection")
+            ?? config('database.default');
+    }
+
+    protected function resolveQueueConnectionName(): string
     {
         $queueConnection = config('queue.default', 'database');
 
@@ -29,16 +84,11 @@ class QueueJob extends Model
             $queueConnection = 'database';
         }
 
-        return config("queue.connections.{$queueConnection}.table") ?: 'jobs';
+        return $queueConnection;
     }
 
-    public function getKeyName()
+    protected function resolveQueueTable(): string
     {
-        return 'id';
-    }
-
-    public function getKey()
-    {
-        return $this->getAttribute($this->getKeyName());
+        return config("queue.connections.{$this->resolveQueueConnectionName()}.table") ?: 'jobs';
     }
 }
