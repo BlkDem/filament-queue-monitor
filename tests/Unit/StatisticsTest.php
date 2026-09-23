@@ -6,6 +6,7 @@ use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Jobs\Job;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Kilo\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
@@ -133,20 +134,45 @@ describe('Statistics', function () {
             ->and($metric->avg_runtime)->toBe(0.5);
     });
 
-    it('aggregates stats across time periods', function () {
+    it('aggregates runtime statistics across updates', function () {
         $storage = app(MetricsStorage::class);
+        $period = now()->startOfMinute()->format('Y-m-d H:i:s');
 
-        $oldPeriod = now()->subHours(2)->startOfMinute()->format('Y-m-d H:i:s');
-        $recentPeriod = now()->startOfMinute()->format('Y-m-d H:i:s');
-        $storage->record('database', 'default', $oldPeriod, 10, 1);
-        $storage->record('database', 'default', $recentPeriod, 5, 0);
+        $storage->record('database', 'default', $period, 2, 0, 10.0, 12.0);
+        $storage->record('database', 'default', $period, 1, 1, 20.0, 8.0);
 
-        $stats = $storage->getAggregatedStats('hour');
-        expect($stats['processed'])->toBe(5)
-            ->and($stats['failed'])->toBe(0);
+        $metric = DB::table('queue_monitor_metrics')
+            ->where('connection', 'database')
+            ->where('queue', 'default')
+            ->where('period', $period)
+            ->first();
 
-        $stats = $storage->getAggregatedStats('today');
-        expect($stats['processed'])->toBe(15)
-            ->and($stats['failed'])->toBe(1);
+        expect($metric->processed)->toBe(3)
+            ->and($metric->failed)->toBe(1)
+            ->and($metric->avg_runtime)->toBe(15.0)
+            ->and($metric->max_runtime)->toBe(12.0);
+    });
+
+    it('aggregates stats across time periods', function () {
+        Carbon::setTestNow('2026-01-01 12:00:00');
+
+        try {
+            $storage = app(MetricsStorage::class);
+
+            $oldPeriod = now()->subHours(2)->startOfMinute()->format('Y-m-d H:i:s');
+            $recentPeriod = now()->startOfMinute()->format('Y-m-d H:i:s');
+            $storage->record('database', 'default', $oldPeriod, 10, 1);
+            $storage->record('database', 'default', $recentPeriod, 5, 0);
+
+            $stats = $storage->getAggregatedStats('hour');
+            expect($stats['processed'])->toBe(5)
+                ->and($stats['failed'])->toBe(0);
+
+            $stats = $storage->getAggregatedStats('today');
+            expect($stats['processed'])->toBe(15)
+                ->and($stats['failed'])->toBe(1);
+        } finally {
+            Carbon::setTestNow();
+        }
     });
 });

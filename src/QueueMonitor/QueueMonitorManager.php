@@ -2,6 +2,7 @@
 
 namespace Kilo\FilamentQueueMonitor\QueueMonitor;
 
+use InvalidArgumentException;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Manager;
 use Kilo\FilamentQueueMonitor\QueueMonitor\Contracts\QueueMonitorDriver;
@@ -19,7 +20,7 @@ class QueueMonitorManager extends Manager
     {
         $driver = config('filament-queue-monitor.driver');
 
-        if (! $driver) {
+        if (! is_string($driver) || $driver === '') {
             $driver = config('queue.default', 'database');
         }
 
@@ -27,11 +28,19 @@ class QueueMonitorManager extends Manager
             return 'redis';
         }
 
-        if (in_array($driver, ['database', 'sync'])) {
+        if (in_array($driver, ['database', 'sync'], true)) {
             return 'database';
         }
 
-        return $driver;
+        if (is_string($driver) && config("queue.connections.{$driver}.driver") === 'database') {
+            return 'database';
+        }
+
+        if (is_string($driver) && config("queue.connections.{$driver}.driver") === 'redis') {
+            return 'redis';
+        }
+
+        throw new InvalidArgumentException("Unsupported queue monitor driver [{$driver}].");
     }
 
     protected function createRedisDriver(): QueueMonitorDriver

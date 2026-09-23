@@ -23,12 +23,20 @@
     </p>
 
     <div class="mt-4">
-        {{ $this->getHeaderWidgets() }}
+        <x-filament-widgets::widgets
+            :columns="$this->getHeaderWidgetsColumns()"
+            :data="$this->getWidgetData()"
+            :widgets="$this->getVisibleHeaderWidgets()"
+        />
     </div>
 
-    @if (config('filament-queue-monitor.metrics.enabled', true))
+    @if ((bool) config('filament-queue-monitor.metrics.enabled', true))
         <div class="mt-6">
-            {{ $this->getFooterWidgets() }}
+            <x-filament-widgets::widgets
+                :columns="$this->getFooterWidgetsColumns()"
+                :data="$this->getWidgetData()"
+                :widgets="$this->getVisibleFooterWidgets()"
+            />
         </div>
     @endif
 </div>

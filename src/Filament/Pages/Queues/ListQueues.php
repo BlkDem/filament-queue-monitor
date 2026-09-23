@@ -2,30 +2,34 @@
 
 namespace Kilo\FilamentQueueMonitor\Filament\Pages\Queues;
 
-use Filament\Forms\Components\Select;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Form;
-use Filament\Pages\Concerns\InteractsWithForms as InteractsWithFormsTrait;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Kilo\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
+use Kilo\FilamentQueueMonitor\Support\Version;
 
 class ListQueues extends BaseQueueTablePage
 {
-    use InteractsWithFormsTrait;
+    public function getView(): string
+    {
+        return 'filament-queue-monitor::pages.list-queues';
+    }
 
-    protected static string $view = 'filament-queue-monitor::pages.list-queues';
+    public static function getNavigationIcon(): string | Htmlable | null
+    {
+        return 'heroicon-o-queue-list';
+    }
 
-    protected static ?string $navigationLabel = 'Queues';
+    public static function getNavigationLabel(): string
+    {
+        return 'Queues';
+    }
 
-    protected static ?string $navigationIcon = 'heroicon-o-queue-list';
-
-    protected static ?string $navigationGroup = 'Queue Monitor';
-
-    protected static ?int $navigationSort = 10;
+    public static function getNavigationSort(): ?int
+    {
+        return 10;
+    }
 
     protected static ?string $slug = 'queue-monitor/queues';
 
@@ -54,7 +58,7 @@ class ListQueues extends BaseQueueTablePage
         }, $queues);
     }
 
-    protected function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
             ->query($this->getTableQuery())
@@ -88,16 +92,15 @@ class ListQueues extends BaseQueueTablePage
                     ->dateTime()
                     ->sortable(),
             ])
-            ->recordUrl(fn ($record) => ViewQueue::getUrl(['queue' => $record->name]))
+            ->recordUrl(fn ($record) => is_array($record) ? null : ViewQueue::getUrl(['queue' => $record->name]))
             ->searchPlaceholder('Search queues...')
             ->defaultSort('name', 'asc')
             ->paginated([10, 25, 50]);
-    }
 
-    public function getViewData(): array
-    {
-        return array_merge(parent::getViewData(), [
-            'queues' => $this->getDriver()->getQueues(),
-        ]);
+        if (Version::isFilament4()) {
+            $table->defaultKeySort(false);
+        }
+
+        return $table;
     }
 }

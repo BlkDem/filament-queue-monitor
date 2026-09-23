@@ -22,6 +22,25 @@ describe('DatabaseQueueMonitorDriver', function () {
         ]);
     }
 
+    it('uses the Laravel queue default when no monitor driver is configured', function () {
+        config()->set('filament-queue-monitor.driver', null);
+        config()->set('queue.default', 'redis');
+
+        expect(app(QueueMonitorManager::class)->getDefaultDriver())->toBe('redis');
+    });
+
+    it('supports custom database queue connections', function () {
+        config()->set('filament-queue-monitor.driver', null);
+        config()->set('queue.default', 'database_jobs');
+        config()->set('queue.connections.database_jobs', [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'connection' => 'testing',
+        ]);
+
+        expect(app(QueueMonitorManager::class)->getDefaultDriver())->toBe('database');
+    });
+
     it('detects queues from the jobs table', function () {
         DB::table('jobs')->insert([
             [

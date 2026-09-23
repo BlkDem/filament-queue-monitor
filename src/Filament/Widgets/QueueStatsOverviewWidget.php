@@ -12,8 +12,6 @@ class QueueStatsOverviewWidget extends BaseWidget
 
     protected int | string | array $columnSpan = 'full';
 
-    protected static ?string $pollingInterval = null;
-
     public function getColumns(): int
     {
         return 4;

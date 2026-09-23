@@ -16,11 +16,9 @@ class InstallCommand extends Command
     {
         $this->info('Installing Filament Queue Monitor...');
 
-        $this->publishes([
-            config_path('filament-queue-monitor.php') => null,
-        ], 'config');
+        $configPath = config_path('filament-queue-monitor.php');
 
-        if (! config_path('filament-queue-monitor.php')) {
+        if (! file_exists($configPath) || $this->option('force')) {
             $this->info('Publishing config...');
             $this->call('vendor:publish', [
                 '--tag' => 'filament-queue-monitor-config',
@@ -35,9 +33,15 @@ class InstallCommand extends Command
         ]);
 
         $this->info('Running migrations...');
-        $this->call('migrate', [
+        $status = $this->call('migrate', [
+            '--path' => [dirname(__DIR__) . '/Database/Migrations'],
+            '--realpath' => true,
             '--force' => true,
         ]);
+
+        if ($status !== static::SUCCESS) {
+            return $status;
+        }
 
         $this->info('Register the plugin in your PanelServiceProvider:');
         $this->line('');

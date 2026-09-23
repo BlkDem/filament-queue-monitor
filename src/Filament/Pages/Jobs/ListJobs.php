@@ -4,20 +4,32 @@ namespace Kilo\FilamentQueueMonitor\Filament\Pages\Jobs;
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Kilo\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use Kilo\FilamentQueueMonitor\Support\Version;
 
 class ListJobs extends BaseQueueTablePage
 {
-    protected static string $view = 'filament-queue-monitor::pages.list-jobs';
+    public function getView(): string
+    {
+        return 'filament-queue-monitor::pages.list-jobs';
+    }
 
-    protected static ?string $navigationLabel = 'Jobs';
+    public static function getNavigationIcon(): string | Htmlable | null
+    {
+        return 'heroicon-o-cog';
+    }
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog';
+    public static function getNavigationLabel(): string
+    {
+        return 'Jobs';
+    }
 
-    protected static ?string $navigationGroup = 'Queue Monitor';
-
-    protected static ?int $navigationSort = 20;
+    public static function getNavigationSort(): ?int
+    {
+        return 20;
+    }
 
     protected static ?string $slug = 'queue-monitor/jobs';
 
@@ -69,7 +81,7 @@ class ListJobs extends BaseQueueTablePage
         ];
     }
 
-    protected function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
             ->query($this->getTableQuery())
@@ -100,6 +112,12 @@ class ListJobs extends BaseQueueTablePage
             ->searchPlaceholder('Search jobs...')
             ->defaultSort('createdAt', 'desc')
             ->paginated([10, 25, 50]);
+
+        if (Version::isFilament4()) {
+            $table->defaultKeySort(false);
+        }
+
+        return $table;
     }
 
     protected function getSortField(string $column): string
@@ -113,12 +131,5 @@ class ListJobs extends BaseQueueTablePage
         }
 
         return $column;
-    }
-
-    public function getViewData(): array
-    {
-        return array_merge(parent::getViewData(), [
-            'queues' => $this->getDriver()->getQueues(),
-        ]);
     }
 }

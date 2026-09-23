@@ -4,6 +4,7 @@ namespace Kilo\FilamentQueueMonitor\Tests\Unit;
 
 use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use Kilo\FilamentQueueMonitor\Support\Access;
 
 describe('Security', function () {
     it('safely parses malicious JSON payload', function () {
@@ -93,5 +94,28 @@ describe('Security', function () {
 
         expect($job->resolvePayloadData())->toHaveKey('uuid')
             ->and($job->resolveJobClass())->toBe('Test');
+    });
+
+    it('handles scalar nested payload data gracefully', function () {
+        $job = new JobInfo(
+            id: 1,
+            uuid: null,
+            queue: 'default',
+            job: 'Unknown',
+            payload: json_encode(['data' => 'not-an-array']),
+        );
+
+        expect($job->resolveJobClass())->toBeNull()
+            ->and($job->resolvePayloadData())->toBe(['data' => 'not-an-array']);
+    });
+
+    it('denies queue monitor access by default', function () {
+        expect(Access::canAccess())->toBeFalse();
+    });
+
+    it('allows queue monitor access when explicitly enabled', function () {
+        config()->set('filament-queue-monitor.authorize', true);
+
+        expect(Access::canAccess())->toBeTrue();
     });
 });

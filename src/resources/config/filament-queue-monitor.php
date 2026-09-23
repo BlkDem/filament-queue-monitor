@@ -4,27 +4,23 @@ return [
 
     'enabled' => true,
 
-    'driver' => env(
-        'QUEUE_MONITOR_DRIVER',
-        env('QUEUE_CONNECTION', 'database')
-    ),
+    'driver' => env('QUEUE_MONITOR_DRIVER'),
 
     'refresh_interval' => 10,
 
     'metrics' => [
         'enabled' => env('QUEUE_MONITOR_METRICS_ENABLED', true),
+        'table' => env('QUEUE_MONITOR_METRICS_TABLE', 'queue_monitor_metrics'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
     ],
 
     'navigation' => [
         'enabled' => env('QUEUE_MONITOR_NAV_ENABLED', true),
-        'group' => env('QUEUE_MONITOR_NAV_GROUP', 'Tools'),
-        'sort' => env('QUEUE_MONITOR_NAV_SORT', 100),
+        'group' => env('QUEUE_MONITOR_NAV_GROUP', 'Queue Monitor'),
+        'sort' => env('QUEUE_MONITOR_NAV_SORT', 0),
     ],
 
-    'authorize' => function ($user) {
-        return true;
-    },
+    'authorize' => env('QUEUE_MONITOR_AUTHORIZE', false),
 
     'failed_jobs' => [
         'table' => env('QUEUE_MONITOR_FAILED_JOBS_TABLE', 'failed_jobs'),
@@ -33,6 +29,7 @@ return [
 
     'redis' => [
         'connection' => env('QUEUE_MONITOR_REDIS_CONNECTION', null),
+        'queues' => env('QUEUE_MONITOR_REDIS_QUEUES', []),
     ],
 
 ];

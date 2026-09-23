@@ -20,18 +20,12 @@
         </div>
     </div>
 
-    @if (isset($queueInfo->lastActivityAt))
-        <div class="text-sm text-gray-500 dark:text-gray-400">
-            Last Activity: {{ $queueInfo->lastActivityAt }}
-        </div>
-    @else
-        <div class="text-sm text-gray-500 dark:text-gray-400">
-            Last Activity: N/A
-        </div>
-    @endif
+    <div class="text-sm text-gray-500 dark:text-gray-400">
+        Last Activity: {{ isset($queueInfo->lastActivityAt) ? $queueInfo->lastActivityAt->format('Y-m-d H:i:s') : 'N/A' }}
+    </div>
 
     <div class="mt-6">
-        <a href="{{ \Filament\Pages\Page::getUrl(ListQueuedJobs::class, ['queue' => $queue]) }}" class="text-primary-600 hover:text-primary-500">
+        <a href="{{ \Filament\Pages\Page::getUrl(\Kilo\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs::class, ['queue' => $queue]) }}" class="text-primary-600 hover:text-primary-500">
             View Queued Jobs &rarr;
         </a>
     </div>

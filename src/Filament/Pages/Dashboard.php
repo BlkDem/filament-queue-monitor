@@ -3,21 +3,45 @@
 namespace Kilo\FilamentQueueMonitor\Filament\Pages;
 
 use Filament\Pages\Page;
+use Illuminate\Contracts\Support\Htmlable;
 use Kilo\FilamentQueueMonitor\Filament\Widgets;
+use Kilo\FilamentQueueMonitor\Support\Access;
 
 class Dashboard extends Page
 {
-    protected static string $view = 'filament-queue-monitor::pages.dashboard';
+    public function getView(): string
+    {
+        return 'filament-queue-monitor::pages.dashboard';
+    }
 
-    protected static ?string $navigationLabel = 'Queue Monitor';
+    public static function getNavigationGroup(): ?string
+    {
+        $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
 
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+        return is_string($group) && $group !== '' ? $group : 'Queue Monitor';
+    }
 
-    protected static ?string $navigationGroup = 'Queue Monitor';
+    public static function getNavigationIcon(): string | Htmlable | null
+    {
+        return 'heroicon-o-chart-bar';
+    }
 
-    protected static ?int $navigationSort = 0;
+    public static function getNavigationLabel(): string
+    {
+        return 'Queue Monitor';
+    }
 
-    protected static bool $shouldRegisterNavigation = true;
+    public static function getNavigationSort(): ?int
+    {
+        $sort = config('filament-queue-monitor.navigation.sort', 0);
+
+        return is_numeric($sort) ? (int) $sort : 0;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return (bool) config('filament-queue-monitor.navigation.enabled', true);
+    }
 
     public string $selectedPeriod = 'today';
 
@@ -37,28 +61,21 @@ class Dashboard extends Page
 
     protected function getFooterWidgets(): array
     {
-        return config('filament-queue-monitor.metrics.enabled', true)
-            ? [Widgets\MetricsChartWidget::class]
+        return (bool) config('filament-queue-monitor.enabled', true)
+            && (bool) config('filament-queue-monitor.metrics.enabled', true)
+            ? [Widgets\MetricsChartWidget::make([
+                'selectedPeriod' => $this->selectedPeriod,
+            ])]
             : [];
     }
 
     public function updatedSelectedPeriod(): void
     {
-        $this->dispatch('refreshDashboard');
+        $this->dispatch('refreshDashboard', period: $this->selectedPeriod);
     }
 
     public static function canAccess(): bool
     {
-        if (! config('filament-queue-monitor.enabled', true)) {
-            return false;
-        }
-
-        $authorize = config('filament-queue-monitor.authorize');
-
-        if ($authorize instanceof \Closure) {
-            return (bool) $authorize(app('auth')->user());
-        }
-
-        return true;
+        return Access::canAccess();
     }
 }

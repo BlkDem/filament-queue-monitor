@@ -9,21 +9,15 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Kilo\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use Kilo\FilamentQueueMonitor\Support\Access;
 
 abstract class BaseQueueTablePage extends Page implements HasTable
 {
     use InteractsWithTable;
-
-    protected static bool $shouldRegisterNavigation = true;
-
-    protected static ?string $navigationGroup = 'Queue Monitor';
-
-    protected static bool $isNavigationGroupEnabled = true;
-
-    public ?string $tableSearch = '';
 
     public ?string $tableSortColumn = null;
 
@@ -31,13 +25,17 @@ abstract class BaseQueueTablePage extends Page implements HasTable
 
     public ?array $tableFilters = null;
 
-    public ?int $tableRecordsPerPage = null;
+    public static function getNavigationGroup(): ?string
+    {
+        $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
 
-    public $tableColumnSearches = [];
+        return is_string($group) && $group !== '' ? $group : 'Queue Monitor';
+    }
 
-    public $toggledTableColumns = [];
-
-    public $tablePaginationPage = 1;
+    public static function shouldRegisterNavigation(): bool
+    {
+        return (bool) config('filament-queue-monitor.navigation.enabled', true);
+    }
 
     protected function getTableQuery(): Builder | Relation | null
     {
@@ -54,7 +52,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
         return $this->getFilteredTableQuery();
     }
 
-    public function getTableRecords(): Collection | LengthAwarePaginator
+    public function getTableRecords(): Paginator
     {
         if ($this->cachedTableRecords) {
             return $this->cachedTableRecords;
@@ -73,7 +71,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
         $perPage = $this->getTableRecordsPerPage() ?: $this->getTable()->getDefaultPaginationPageOption() ?: 10;
 
         if ($this->tableRecordsPerPage === 'all') {
-            $perPage = $models->count();
+            $perPage = max(1, $models->count());
         }
 
         $page = $this->getTablePage();
@@ -102,8 +100,12 @@ abstract class BaseQueueTablePage extends Page implements HasTable
         return collect($this->resolveAllRecords())->count();
     }
 
-    public function getTableRecordKey(Model $record): string
+    public function getTableRecordKey(Model | array $record): string
     {
+        if (is_array($record)) {
+            return (string) ($record['id'] ?? $record['uuid'] ?? '');
+        }
+
         return (string) $record->getKey();
     }
 
@@ -212,17 +214,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        if (! config('filament-queue-monitor.enabled', true)) {
-            return false;
-        }
-
-        $authorize = config('filament-queue-monitor.authorize');
-
-        if ($authorize instanceof \Closure) {
-            return (bool) $authorize(app('auth')->user());
-        }
-
-        return true;
+        return Access::canAccess();
     }
 
     protected function getDriver()

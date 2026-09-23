@@ -56,6 +56,36 @@ describe('RedisQueueMonitorDriver', function () {
         expect($queues)->toHaveCount(2);
     });
 
+    it('detects queues from prefixed redis keys', function () {
+        config()->set('database.redis.default.prefix', 'tenant:');
+        \Illuminate\Support\Facades\Facade::clearResolvedInstance('redis');
+
+        Redis::connection()->client()->set('queues:prefixed', json_encode([
+            'uuid' => 'test-prefixed',
+            'job' => 'TestJob',
+            'queue' => 'prefixed',
+            'attempts' => 1,
+            'createdAt' => now()->timestamp,
+            'data' => ['commandName' => 'TestJob'],
+        ]));
+
+        $driver = new RedisQueueMonitorDriver();
+
+        expect(array_column(array_map(fn ($queue) => get_object_vars($queue), $driver->getQueues()), 'name'))
+            ->toContain('prefixed');
+    });
+
+    it('handles malformed nested payloads', function () {
+        Redis::connection()->rpush('queues:malformed', json_encode([
+            'uuid' => 'malformed',
+            'data' => 'not-an-array',
+        ]));
+
+        $driver = new RedisQueueMonitorDriver();
+
+        expect($driver->pendingJobs('malformed')[0]->job)->toBe('Unknown');
+    });
+
     it('returns empty queues list when redis is empty', function () {
         $driver = new RedisQueueMonitorDriver();
 

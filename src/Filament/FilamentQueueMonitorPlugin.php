@@ -19,17 +19,20 @@ class FilamentQueueMonitorPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
-        $panel
-            ->pages([
-                Dashboard::class,
-                ListQueues::class,
-                ViewQueue::class,
-                ListJobs::class,
-                ListFailedJobs::class,
-            ])
-            ->navigationGroups([
-                'Queue Monitor',
+        $panel->pages([
+            Dashboard::class,
+            ListQueues::class,
+            ViewQueue::class,
+            ListJobs::class,
+            ListFailedJobs::class,
+        ]);
+
+        if ((bool) config('filament-queue-monitor.navigation.enabled', true)) {
+            $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
+            $panel->navigationGroups([
+                is_string($group) && $group !== '' ? $group : 'Queue Monitor',
             ]);
+        }
     }
 
     public function boot(Panel $panel): void

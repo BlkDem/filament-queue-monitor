@@ -22,12 +22,15 @@ class FailedJobInfo
 
         try {
             $data = json_decode($this->payload, true, 512, JSON_THROW_ON_ERROR);
+            $jobData = is_array($data['data'] ?? null) ? $data['data'] : [];
 
-            return $data['displayName']
+            $name = $data['displayName']
                 ?? $data['job']
-                ?? $data['data']['commandName']
-                ?? $data['data']['command']
+                ?? $jobData['commandName']
+                ?? $jobData['command']
                 ?? null;
+
+            return is_string($name) ? $name : null;
         } catch (\JsonException) {
             return null;
         }
@@ -40,7 +43,9 @@ class FailedJobInfo
         }
 
         try {
-            return json_decode($this->payload, true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($this->payload, true, 512, JSON_THROW_ON_ERROR);
+
+            return is_array($data) ? $data : [];
         } catch (\JsonException) {
             return [];
         }

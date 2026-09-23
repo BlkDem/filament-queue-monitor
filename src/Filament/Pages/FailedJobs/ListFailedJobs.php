@@ -3,23 +3,34 @@
 namespace Kilo\FilamentQueueMonitor\Filament\Pages\FailedJobs;
 
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
+use Kilo\FilamentQueueMonitor\Support\Version;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Kilo\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 
 class ListFailedJobs extends BaseQueueTablePage
 {
-    protected static string $view = 'filament-queue-monitor::pages.list-failed-jobs';
+    public function getView(): string
+    {
+        return 'filament-queue-monitor::pages.list-failed-jobs';
+    }
 
-    protected static ?string $navigationLabel = 'Failed Jobs';
+    public static function getNavigationIcon(): string | Htmlable | null
+    {
+        return 'heroicon-o-exclamation-triangle';
+    }
 
-    protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
+    public static function getNavigationLabel(): string
+    {
+        return 'Failed Jobs';
+    }
 
-    protected static ?string $navigationGroup = 'Queue Monitor';
-
-    protected static ?int $navigationSort = 30;
+    public static function getNavigationSort(): ?int
+    {
+        return 30;
+    }
 
     protected static ?string $slug = 'queue-monitor/failed-jobs';
 
@@ -47,8 +58,10 @@ class ListFailedJobs extends BaseQueueTablePage
         }, $jobs);
     }
 
-    protected function table(Table $table): Table
+    public function table(Table $table): Table
     {
+        $actionClass = Version::getActionClass();
+
         return $table
             ->query($this->getTableQuery())
             ->poll($this->getTablePollingInterval())
@@ -82,7 +95,7 @@ class ListFailedJobs extends BaseQueueTablePage
                     ->sortable(),
             ])
             ->actions([
-                Action::make('retry')
+                $actionClass::make('retry')
                     ->label('Retry')
                     ->icon('heroicon-o-arrow-path')
                     ->color('info')
@@ -98,7 +111,7 @@ class ListFailedJobs extends BaseQueueTablePage
                             ->success()
                             ->send();
                     }),
-                Action::make('delete')
+                $actionClass::make('delete')
                     ->label('Delete')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
@@ -119,6 +132,12 @@ class ListFailedJobs extends BaseQueueTablePage
             ->searchPlaceholder('Search failed jobs...')
             ->defaultSort('failedAt', 'desc')
             ->paginated([10, 25, 50]);
+
+        if (Version::isFilament4()) {
+            $table->defaultKeySort(false);
+        }
+
+        return $table;
     }
 
     protected function getSortField(string $column): string

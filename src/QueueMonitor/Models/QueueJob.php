@@ -16,13 +16,20 @@ class QueueJob extends Model
 
     public function getTable()
     {
-        $table = config('queue.connections.database.table');
+        $queueConnection = config('queue.default', 'database');
 
-        if (! $table) {
-            return 'jobs';
+        if (! is_string($queueConnection) || $queueConnection === 'sync') {
+            $queueConnection = 'database';
         }
 
-        return $table;
+        if (
+            config('filament-queue-monitor.driver') === 'database'
+            && config("queue.connections.{$queueConnection}.driver") === 'redis'
+        ) {
+            $queueConnection = 'database';
+        }
+
+        return config("queue.connections.{$queueConnection}.table") ?: 'jobs';
     }
 
     public function getKeyName()

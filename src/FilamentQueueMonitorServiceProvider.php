@@ -37,11 +37,11 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
 
         if (config('filament-queue-monitor.enabled', true)) {
             $this->loadMigrationsFrom(__DIR__ . '/Database/Migrations');
-
-            $this->publishes([
-                __DIR__ . '/Database/Migrations' => database_path('migrations'),
-            ], 'filament-queue-monitor-migrations');
         }
+
+        $this->publishes([
+            __DIR__ . '/Database/Migrations' => database_path('migrations'),
+        ], 'filament-queue-monitor-migrations');
 
         $this->publishes([
             __DIR__ . '/resources/config/filament-queue-monitor.php' => config_path('filament-queue-monitor.php'),

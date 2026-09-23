@@ -21,28 +21,45 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
 
     protected string $connection;
 
+    protected string $queueConnection;
+
     public function __construct()
     {
-        $this->table = config('queue.connections.database.table', 'jobs');
-        $this->connection = config('queue.connections.database.connection')
+        $queueConnection = config('queue.default', 'database');
+
+        if (! is_string($queueConnection) || $queueConnection === 'sync') {
+            $queueConnection = 'database';
+        }
+
+        if (
+            config('filament-queue-monitor.driver') === 'database'
+            && config("queue.connections.{$queueConnection}.driver") === 'redis'
+        ) {
+            $queueConnection = 'database';
+        }
+
+        $this->table = config("queue.connections.{$queueConnection}.table") ?: 'jobs';
+        $this->queueConnection = $queueConnection;
+        $this->connection = config("queue.connections.{$queueConnection}.connection")
             ?? config('database.default');
         $this->database = app('db')->connection($this->connection);
     }
 
     public function getQueues(): array
     {
-        $rows = $this->database->select(
-            "SELECT DISTINCT queue FROM {$this->table} ORDER BY queue ASC"
-        );
+        $queueNames = $this->database->table($this->table)
+            ->distinct()
+            ->orderBy('queue', 'asc')
+            ->pluck('queue');
 
         $queues = [];
 
-        foreach ($rows as $row) {
-            $queues[] = $this->info($row->queue);
+        foreach ($queueNames as $queue) {
+            $queues[] = $this->info((string) $queue);
         }
 
         if (empty($queues)) {
-            $queues[] = $this->info(config('queue.connections.database.queue', 'default'));
+            $queues[] = $this->info(config("queue.connections.{$this->queueConnection}.queue") ?: 'default');
         }
 
         return $queues;
@@ -73,6 +90,7 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             pending: $pending,
             processing: $reserved,
             delayed: $delayed,
+            completed: 0,
             failed: $failed,
             total: $pending + $delayed + $reserved,
         );
@@ -91,7 +109,11 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         $lastActivityAt = null;
 
         if ($lastJob) {
-            $lastActivityAt = Carbon::parse($lastJob->created_at ?? $lastJob->available_at ?? null);
+            $lastActivity = $lastJob->created_at ?? $lastJob->available_at;
+
+            if ($lastActivity !== null) {
+                $lastActivityAt = Carbon::parse($lastActivity);
+            }
         }
 
         if ($stats->failed > 0) {
@@ -103,7 +125,9 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             pending: $stats->pending,
             processing: $stats->processing,
             delayed: $stats->delayed,
+            completed: $stats->completed,
             failed: $stats->failed,
+            total: $stats->total,
             lastActivityAt: $lastActivityAt,
         );
     }
@@ -166,7 +190,14 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         $payload = $this->resetAttempts($job->payload);
         $payload = $this->refreshRetryUntil($payload);
 
-        app('queue')->connection($job->connection)->pushRaw($payload, $job->queue);
+        if ($payload === '') {
+            return;
+        }
+
+        app('queue')->connection($this->failedStringValue($job, 'connection'))->pushRaw(
+            $payload,
+            $this->failedStringValue($job, 'queue')
+        );
 
         $failer->forget($id);
     }
@@ -203,13 +234,16 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
     {
         $data = $this->safeJsonDecode($record->payload ?? '');
 
+        $id = $this->failedJobValue($record, 'id');
+        $uuid = $this->failedJobValue($record, 'uuid') ?? ($data['uuid'] ?? null);
+
         return new FailedJobInfo(
-            id: $record->id ?? null,
-            uuid: $record->uuid ?? ($data['uuid'] ?? null),
-            connection: $record->connection ?? '',
-            queue: $record->queue ?? '',
-            payload: $record->payload ?? '',
-            exception: $record->exception ?? '',
+            id: is_scalar($id) ? (string) $id : null,
+            uuid: is_scalar($uuid) ? (string) $uuid : null,
+            connection: $this->failedStringValue($record, 'connection'),
+            queue: $this->failedStringValue($record, 'queue'),
+            payload: $this->failedStringValue($record, 'payload'),
+            exception: $this->failedStringValue($record, 'exception'),
             failedAt: isset($record->failed_at) ? Carbon::parse($record->failed_at) : null,
         );
     }
@@ -221,9 +255,11 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         }
 
         try {
-            return json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            $decoded = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             return [];
         }
+
+        return is_array($decoded) ? $decoded : [];
     }
 }

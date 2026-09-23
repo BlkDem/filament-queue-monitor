@@ -3,6 +3,7 @@
 namespace Kilo\FilamentQueueMonitor\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
+use Illuminate\Contracts\Support\Htmlable;
 use Kilo\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 
 class MetricsChartWidget extends ChartWidget
@@ -10,8 +11,6 @@ class MetricsChartWidget extends ChartWidget
     protected static bool $isLazy = false;
 
     protected int | string | array $columnSpan = 'full';
-
-    protected static ?string $pollingInterval = null;
 
     protected function getPollingInterval(): ?string
     {
@@ -24,9 +23,20 @@ class MetricsChartWidget extends ChartWidget
         return "{$interval}s";
     }
 
-    protected function getHeading(): ?string
+    public function getHeading(): string | Htmlable | null
     {
         return 'Queue Activity';
+    }
+
+    public string $selectedPeriod = 'today';
+
+    protected $listeners = ['refreshDashboard' => 'refreshDashboard'];
+
+    public function refreshDashboard(string $period): void
+    {
+        $this->selectedPeriod = in_array($period, ['hour', 'today', '24h', '7d'], true)
+            ? $period
+            : 'today';
     }
 
     protected function getData(): array
@@ -40,7 +50,10 @@ class MetricsChartWidget extends ChartWidget
             ];
         }
 
-        $metrics = $storage->getMetrics('7d');
+        $period = in_array($this->selectedPeriod, ['hour', 'today', '24h', '7d'], true)
+            ? $this->selectedPeriod
+            : 'today';
+        $metrics = $storage->getMetrics($period);
 
         $labels = [];
         $processed = [];
