@@ -1,11 +1,11 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor\Contracts;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Contracts;
 
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 
 interface QueueMonitorDriver
 {

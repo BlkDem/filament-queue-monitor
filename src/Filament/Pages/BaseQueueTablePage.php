@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Pages;
+namespace BlkDem\FilamentQueueMonitor\Filament\Pages;
 
 use Filament\Pages\Page;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
-use Kilo\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 
 abstract class BaseQueueTablePage extends Page implements HasTable
 {
@@ -60,6 +60,8 @@ abstract class BaseQueueTablePage extends Page implements HasTable
 
         $records = collect($this->resolveAllRecords());
 
+        $records = $this->applyFiltersToTableRecords($records);
+
         if (filled($search = $this->getTableSearch())) {
             $records = $this->applySearchToTableRecords($records, $search);
         }
@@ -97,7 +99,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
             return $this->cachedTableRecords->total();
         }
 
-        return collect($this->resolveAllRecords())->count();
+        return $this->applyFiltersToTableRecords(collect($this->resolveAllRecords()))->count();
     }
 
     public function getTableRecordKey(Model | array $record): string
@@ -166,6 +168,36 @@ abstract class BaseQueueTablePage extends Page implements HasTable
         })->values();
     }
 
+    protected function applyFiltersToTableRecords(Collection $records): Collection
+    {
+        foreach ($this->tableFilters ?? [] as $field => $filter) {
+            if (! is_array($filter)) {
+                continue;
+            }
+
+            $filtered = $this->applyFilterToTableRecords($records, (string) $field, $filter);
+
+            if ($filtered !== null) {
+                $records = $filtered;
+            }
+        }
+
+        return $records;
+    }
+
+    protected function applyFilterToTableRecords(Collection $records, string $field, array $filter): ?Collection
+    {
+        $value = $filter['value'] ?? null;
+
+        if (blank($value)) {
+            return null;
+        }
+
+        return $records->filter(
+            fn ($record): bool => (string) $this->getFieldValue($record, $field) === (string) $value,
+        )->values();
+    }
+
     protected function applySortToTableRecords(Collection $records): Collection
     {
         $column = $this->tableSortColumn;
@@ -219,6 +251,6 @@ abstract class BaseQueueTablePage extends Page implements HasTable
 
     protected function getDriver()
     {
-        return app(\Kilo\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager::class)->driver();
+        return app(\BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager::class)->driver();
     }
 }

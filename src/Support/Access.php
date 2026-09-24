@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Support;
+namespace BlkDem\FilamentQueueMonitor\Support;
 
 final class Access
 {

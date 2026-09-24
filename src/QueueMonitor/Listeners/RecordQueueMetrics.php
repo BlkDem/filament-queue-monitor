@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor\Listeners;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Listeners;
 
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
@@ -9,7 +9,7 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Jobs\Job;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 
 class RecordQueueMetrics
 {

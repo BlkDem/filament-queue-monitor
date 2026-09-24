@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor\Models;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Models;
 
 use Illuminate\Database\Eloquent\Model;
 

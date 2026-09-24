@@ -1,13 +1,13 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor;
 
 use InvalidArgumentException;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Manager;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Contracts\QueueMonitorDriver;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Contracts\QueueMonitorDriver;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
 
 class QueueMonitorManager extends Manager
 {

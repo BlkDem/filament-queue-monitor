@@ -1,13 +1,13 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Pages\Queues;
+namespace BlkDem\FilamentQueueMonitor\Filament\Pages\Queues;
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
-use Kilo\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
-use Kilo\FilamentQueueMonitor\Support\Version;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
+use BlkDem\FilamentQueueMonitor\Support\Version;
 
 class ListQueues extends BaseQueueTablePage
 {

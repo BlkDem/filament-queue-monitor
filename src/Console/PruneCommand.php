@@ -1,9 +1,9 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Console;
+namespace BlkDem\FilamentQueueMonitor\Console;
 
 use Illuminate\Console\Command;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'queue-monitor:prune')]

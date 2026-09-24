@@ -1,20 +1,23 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Widgets;
+namespace BlkDem\FilamentQueueMonitor\Filament\Widgets;
 
+use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Columns\Summarizers\Average;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\Widgets\TableWidget as BaseTableWidget;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Models\Metric;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\Metric;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 
 class JobBreakdownWidget extends BaseTableWidget
 {
@@ -24,9 +27,29 @@ class JobBreakdownWidget extends BaseTableWidget
 
     public string $selectedPeriod = 'today';
 
+    public array $periods = [
+        'hour' => 'Last hour',
+        'today' => 'Today',
+        '24h' => 'Last 24 hours',
+        '7d' => 'Last 7 days',
+    ];
+
     public ?string $pollingInterval = null;
 
     protected $listeners = ['refreshDashboard' => 'refreshDashboard'];
+
+    public function boot(): void
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::TOOLBAR_GROUPING_SELECTOR_AFTER,
+            fn (): string => view('filament-queue-monitor::widgets.partials.toolbar-controls', [
+                'periods' => $this->periods,
+                'selectedPeriod' => $this->selectedPeriod,
+                'defaultInterval' => (int) config('filament-queue-monitor.metrics.refresh_interval', 30),
+            ])->render(),
+            scopes: static::class,
+        );
+    }
 
     public function refreshDashboard(string $period): void
     {
@@ -44,34 +67,50 @@ class JobBreakdownWidget extends BaseTableWidget
     {
         $counts = [];
 
+        $groupCounts = function (string $column) use (&$counts): array {
+            if (! array_key_exists($column, $counts)) {
+                $counts[$column] = $this->query()
+                    ->get([$column])
+                    ->groupBy($column)
+                    ->map->count()
+                    ->all();
+            }
+
+            return $counts[$column];
+        };
+
+        $queueGroup = Group::make('queue')
+            ->label('Queue')
+            ->collapsible()
+            ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
+                $value = (string) $record->queue;
+
+                return $value.' ('.($groupCounts('queue')[$value] ?? 0).')';
+            });
+
+        $connectionGroup = Group::make('connection')
+            ->label('Connection')
+            ->collapsible()
+            ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
+                $value = (string) $record->connection;
+
+                return $value.' ('.($groupCounts('connection')[$value] ?? 0).')';
+            });
+
         $this->collapseGroupsByDefault($table);
 
         return $table
             ->heading('Job Breakdown')
             ->description('Processed and failed jobs grouped by queue')
             ->query(fn (): Builder => $this->query())
-            ->defaultGroup(
-                Group::make('queue')
+            ->filters([
+                SelectFilter::make('queue')
                     ->label('Queue')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(function (Model $record) use (&$counts): string {
-                        if ($counts === []) {
-                            $counts = $this->query()
-                                ->get(['queue'])
-                                ->groupBy('queue')
-                                ->map->count()
-                                ->all();
-                        }
-
-                        return (string) $record->queue.' ('.($counts[$record->queue] ?? 0).')';
-                    }),
-            )
-            ->groups([
-                Group::make('queue')->label('Queue')->collapsible(),
-                Group::make('connection')->label('Connection')->collapsible(),
+                    ->options(fn (): array => $this->metricQueueOptions()),
             ])
+            ->defaultGroup($queueGroup)
+            ->groups([$queueGroup, $connectionGroup])
             ->defaultSort('processed', 'desc')
-            ->poll($this->getPollingInterval())
             ->columns([
                 TextColumn::make('job')
                     ->label('Job')
@@ -141,6 +180,22 @@ class JobBreakdownWidget extends BaseTableWidget
         if (method_exists($table, 'collapsedGroupsByDefault')) {
             $table->collapsedGroupsByDefault();
         }
+    }
+
+    protected function metricQueueOptions(): array
+    {
+        $storage = app(MetricsStorage::class);
+
+        if (! $storage->isEnabled() || ! Schema::hasTable($storage->getTable())) {
+            return [];
+        }
+
+        return Metric::query()
+            ->where('period', '>=', $this->periodStart())
+            ->distinct()
+            ->orderBy('queue')
+            ->pluck('queue', 'queue')
+            ->all();
     }
 
     protected function query(): Builder

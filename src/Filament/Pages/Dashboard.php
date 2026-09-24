@@ -1,11 +1,11 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Pages;
+namespace BlkDem\FilamentQueueMonitor\Filament\Pages;
 
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
-use Kilo\FilamentQueueMonitor\Filament\Widgets;
-use Kilo\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 
 class Dashboard extends Page
 {
@@ -50,15 +50,6 @@ class Dashboard extends Page
         return (bool) config('filament-queue-monitor.navigation.enabled', true);
     }
 
-    public string $selectedPeriod = 'today';
-
-    public array $periods = [
-        'hour' => 'Last hour',
-        'today' => 'Today',
-        '24h' => 'Last 24 hours',
-        '7d' => 'Last 7 days',
-    ];
-
     protected function getHeaderWidgets(): array
     {
         return [
@@ -75,18 +66,11 @@ class Dashboard extends Page
         $historyWidgets = (bool) config('filament-queue-monitor.enabled', true)
             && (bool) config('filament-queue-monitor.metrics.enabled', true)
             ? [
-                Widgets\JobBreakdownWidget::make([
-                    'selectedPeriod' => $this->selectedPeriod,
-                ]),
+                Widgets\JobBreakdownWidget::make(),
             ]
             : [];
 
         return [...$queueActivityWidgets, ...$historyWidgets];
-    }
-
-    public function updatedSelectedPeriod(): void
-    {
-        $this->dispatch('refreshDashboard', period: $this->selectedPeriod);
     }
 
     public static function canAccess(): bool

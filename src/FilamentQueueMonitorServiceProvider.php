@@ -1,13 +1,13 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor;
+namespace BlkDem\FilamentQueueMonitor;
 
 use Illuminate\Support\ServiceProvider;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
-use Kilo\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 
 class FilamentQueueMonitorServiceProvider extends ServiceProvider
 {

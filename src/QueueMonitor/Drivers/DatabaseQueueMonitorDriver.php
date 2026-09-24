@@ -1,15 +1,15 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor\Drivers;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers;
 
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Contracts\QueueMonitorDriver;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Support\HandlesFailedJobs;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Contracts\QueueMonitorDriver;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Support\HandlesFailedJobs;
 
 class DatabaseQueueMonitorDriver implements QueueMonitorDriver
 {

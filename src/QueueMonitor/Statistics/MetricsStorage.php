@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor\Statistics;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;

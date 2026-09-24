@@ -1,14 +1,20 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Pages\FailedJobs;
+namespace BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs;
 
 use Filament\Notifications\Notification;
-use Kilo\FilamentQueueMonitor\Support\Version;
+use Filament\Forms\Components\DateTimePicker;
+use BlkDem\FilamentQueueMonitor\Support\Version;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
-use Kilo\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 
 class ListFailedJobs extends BaseQueueTablePage
 {
@@ -36,7 +42,7 @@ class ListFailedJobs extends BaseQueueTablePage
 
     protected function getSearchableFields(): array
     {
-        return ['job', 'queue', 'exception'];
+        return ['id', 'uuid', 'payload', 'exception'];
     }
 
     protected function resolveAllRecords(): array
@@ -65,25 +71,55 @@ class ListFailedJobs extends BaseQueueTablePage
         return $table
             ->query($this->getTableQuery())
             ->poll($this->getTablePollingInterval())
+            ->filters([
+                SelectFilter::make('job')
+                    ->label('Job')
+                    ->options(fn (): array => collect($this->resolveAllRecords())
+                        ->pluck('job', 'job')
+                        ->reject(fn (?string $job): bool => blank($job))
+                        ->mapWithKeys(fn (string $job): array => [$job => (string) Str::afterLast($job, '\\')])
+                        ->sort()
+                        ->toArray()),
+                SelectFilter::make('queue')
+                    ->label('Queue')
+                    ->options(fn (): array => collect($this->resolveAllRecords())
+                        ->pluck('queue', 'queue')
+                        ->reject(fn (?string $queue): bool => blank($queue))
+                        ->sort()
+                        ->toArray()),
+                Filter::make('failedAt')
+                    ->label('Failed At')
+                    ->form([
+                        DateTimePicker::make('from')
+                            ->label('From')
+                            ->native(false),
+                        DateTimePicker::make('until')
+                            ->label('Until')
+                            ->native(false),
+                    ])
+                    ->query(function () {}),
+            ])
             ->columns([
-                TextColumn::make('id')
-                    ->label('ID')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('uuid')
-                    ->label('UUID')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable(),
                 TextColumn::make('job')
                     ->label('Job')
+                    ->formatStateUsing(fn (string $state) => Str::afterLast($state, '\\'))
+                    ->tooltip(fn ($record): string => (string) $record->job)
+                    ->description(fn ($record): string => '#'.$record->id
+                        .(filled($record->uuid) ? ' · '.$record->uuid : ''))
+                    ->extraAttributes(['style' => 'min-width: 24rem;'])
+                    ->wrap()
                     ->searchable()
-                    ->sortable()
-                    ->wrap(),
+                    ->sortable(),
                 TextColumn::make('queue')
                     ->label('Queue')
                     ->badge()
                     ->sortable(),
+                TextColumn::make('payload')
+                    ->label('Payload')
+                    ->wrap()
+                    ->limit(100)
+                    ->placeholder('—')
+                    ->copyable(),
                 TextColumn::make('exception')
                     ->label('Exception')
                     ->searchable()
@@ -138,6 +174,53 @@ class ListFailedJobs extends BaseQueueTablePage
         }
 
         return $table;
+    }
+
+    protected function applyFilterToTableRecords(Collection $records, string $field, array $filter): ?Collection
+    {
+        if ($field !== 'failedAt') {
+            return parent::applyFilterToTableRecords($records, $field, $filter);
+        }
+
+        $from = $this->parseFilterDateTime($filter['from'] ?? null, isFrom: true);
+        $until = $this->parseFilterDateTime($filter['until'] ?? null, isFrom: false);
+
+        if ($from === null && $until === null) {
+            return null;
+        }
+
+        return $records->filter(function ($record) use ($from, $until): bool {
+            $failedAt = Carbon::parse((string) $this->getFieldValue($record, 'failedAt'));
+
+            if ($from !== null && $failedAt->lt($from)) {
+                return false;
+            }
+
+            if ($until !== null && $failedAt->gt($until)) {
+                return false;
+            }
+
+            return true;
+        })->values();
+    }
+
+    protected function parseFilterDateTime(mixed $date, bool $isFrom): ?Carbon
+    {
+        if (blank($date)) {
+            return null;
+        }
+
+        try {
+            $parsed = Carbon::parse($date);
+
+            if ($parsed->format('H:i:s') === '00:00:00') {
+                return $isFrom ? $parsed->startOfDay() : $parsed->endOfDay();
+            }
+
+            return $parsed;
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     protected function getSortField(string $column): string

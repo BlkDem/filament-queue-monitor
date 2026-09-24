@@ -1,10 +1,10 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Tests\Unit;
+namespace BlkDem\FilamentQueueMonitor\Tests\Unit;
 
 use Illuminate\Support\Facades\DB;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 
 describe('Failed Jobs', function () {
     beforeEach(function () {

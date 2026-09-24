@@ -1,5 +1,5 @@
 {
-    "name": "kilo/filament-queue-monitor",
+    "name": "blkdem/filament-queue-monitor",
     "description": "A lightweight queue monitoring plugin for Filament. Not a replacement for Laravel Horizon.",
     "type": "library",
     "license": "MIT",
@@ -13,7 +13,7 @@
     ],
     "authors": [
         {
-            "name": "Kilo"
+            "name": "BlkDem"
         }
     ],
     "require": {
@@ -37,18 +37,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Kilo\\FilamentQueueMonitor\\": "src/"
+            "BlkDem\\FilamentQueueMonitor\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Kilo\\FilamentQueueMonitor\\Tests\\": "tests/"
+            "BlkDem\\FilamentQueueMonitor\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Kilo\\FilamentQueueMonitor\\FilamentQueueMonitorServiceProvider"
+                "BlkDem\\FilamentQueueMonitor\\FilamentQueueMonitorServiceProvider"
             ]
         }
     },

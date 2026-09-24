@@ -1,13 +1,13 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Pages\Jobs;
+namespace BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs;
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
-use Kilo\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
-use Kilo\FilamentQueueMonitor\Support\Version;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use BlkDem\FilamentQueueMonitor\Support\Version;
 
 class ListJobs extends BaseQueueTablePage
 {

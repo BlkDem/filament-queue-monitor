@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Tests\Unit;
+namespace BlkDem\FilamentQueueMonitor\Tests\Unit;
 
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -9,8 +9,8 @@ use Illuminate\Queue\Jobs\Job;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 
 describe('Statistics', function () {
     beforeEach(function () {

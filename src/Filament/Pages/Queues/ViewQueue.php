@@ -1,12 +1,12 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Pages\Queues;
+namespace BlkDem\FilamentQueueMonitor\Filament\Pages\Queues;
 
 use Filament\Pages\Page;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
-use Kilo\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 
 class ViewQueue extends Page
 {

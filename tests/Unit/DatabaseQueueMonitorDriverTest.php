@@ -1,11 +1,11 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Tests\Unit;
+namespace BlkDem\FilamentQueueMonitor\Tests\Unit;
 
 use Illuminate\Support\Facades\DB;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
-use Kilo\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 
 describe('DatabaseQueueMonitorDriver', function () {
     beforeEach(function () {

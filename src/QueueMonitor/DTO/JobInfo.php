@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor\DTO;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor\DTO;
 
 class JobInfo
 {

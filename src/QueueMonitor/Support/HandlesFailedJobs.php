@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\QueueMonitor\Support;
+namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Support;
 
 trait HandlesFailedJobs
 {

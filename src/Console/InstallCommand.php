@@ -1,6 +1,6 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Console;
+namespace BlkDem\FilamentQueueMonitor\Console;
 
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -48,7 +48,7 @@ class InstallCommand extends Command
         $this->line('Add this to your Panel::configure() method:');
         $this->line('');
         $this->line("    ->plugins([");
-        $this->line("        \\Kilo\\FilamentQueueMonitor\\Filament\\FilamentQueueMonitorPlugin::make(),");
+        $this->line("        \\BlkDem\\FilamentQueueMonitor\\Filament\\FilamentQueueMonitorPlugin::make(),");
         $this->line("    ])");
         $this->line('');
 

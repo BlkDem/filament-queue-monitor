@@ -1,8 +1,9 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Widgets;
+namespace BlkDem\FilamentQueueMonitor\Filament\Widgets;
 
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseTableWidget;
@@ -10,14 +11,34 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use Kilo\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
-use Kilo\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use Filament\Support\Facades\FilamentView;
+use Filament\Tables\View\TablesRenderHook;
 
 class QueueActivityWidget extends BaseTableWidget
 {
     protected static bool $isLazy = false;
 
     protected int | string | array $columnSpan = 'full';
+
+    public ?string $pollingInterval = null;
+
+    public function boot(): void
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::TOOLBAR_GROUPING_SELECTOR_AFTER,
+            fn (): string => view('filament-queue-monitor::widgets.partials.polling-controls', [
+                'defaultInterval' => (int) config('filament-queue-monitor.refresh_interval', 10),
+            ])->render(),
+            scopes: static::class,
+        );
+    }
+
+    public function updatedPollingInterval(): void
+    {
+        $this->dispatch('queueActivityPollingIntervalChanged', interval: $this->pollingInterval);
+    }
 
     public function render(): View
     {
@@ -28,35 +49,84 @@ class QueueActivityWidget extends BaseTableWidget
     {
         $counts = [];
 
+        $groupCounts = function (string $column) use (&$counts): array {
+            if (! array_key_exists($column, $counts)) {
+                if ($column === 'status') {
+                    $counts[$column] = $this->applyActiveFilters($this->activeJobsQuery())
+                        ->selectRaw("(CASE WHEN reserved_at IS NOT NULL THEN 'processing' ELSE 'pending' END) AS status")
+                        ->selectRaw('COUNT(*) AS total')
+                        ->groupByRaw("(CASE WHEN reserved_at IS NOT NULL THEN 'processing' ELSE 'pending' END)")
+                        ->pluck('total', 'status')
+                        ->all();
+                } else {
+                    $counts[$column] = $this->applyActiveFilters($this->activeJobsQuery())
+                        ->select($column)
+                        ->selectRaw('COUNT(*) AS total')
+                        ->groupBy($column)
+                        ->pluck('total', $column)
+                        ->all();
+                }
+            }
+
+            return $counts[$column];
+        };
+
+        $queueGroup = Group::make('queue')
+            ->label('Queue')
+            ->collapsible()
+            ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
+                $value = (string) $record->queue;
+
+                return $value.' ('.($groupCounts('queue')[$value] ?? 0).')';
+            });
+
+        $statusGroup = Group::make('status')
+            ->label('Status')
+            ->collapsible()
+            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                $query->orderByRaw("(CASE WHEN reserved_at IS NOT NULL THEN 'processing' ELSE 'pending' END) {$direction}");
+
+                return $query;
+            })
+            ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
+                $value = (string) $record->status;
+
+                return $value.' ('.($groupCounts('status')[$value] ?? 0).')';
+            });
+
         $this->collapseGroupsByDefault($table);
 
         return $table
             ->heading('Queue Activity')
             ->description('Current tasks in each queue — the same counts as the stats above')
-            ->query(fn (): Builder => $this->activeJobsQuery())
-            ->defaultGroup(
-                Group::make('queue')
+            ->query(fn (): Builder => $this->boundedActiveJobsQuery())
+            ->filters([
+                SelectFilter::make('queue')
                     ->label('Queue')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(function (Model $record) use (&$counts): string {
-                        if ($counts === []) {
-                            $counts = $this->activeJobsQuery()
-                                ->select('queue')
-                                ->selectRaw('COUNT(*) as total')
-                                ->groupBy('queue')
-                                ->pluck('total', 'queue')
-                                ->all();
-                        }
+                    ->options(fn (): array => $this->activeJobsQuery()
+                        ->distinct()
+                        ->orderBy('queue')
+                        ->pluck('queue', 'queue')
+                        ->all()),
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'pending',
+                        'processing' => 'processing',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
 
-                        return (string) $record->queue.' ('.($counts[$record->queue] ?? 0).')';
+                        return match ($value) {
+                            'processing' => $query->whereNotNull('reserved_at'),
+                            'pending' => $query->whereNull('reserved_at'),
+                            default => $query,
+                        };
                     }),
-            )
-            ->groups([
-                Group::make('queue')->label('Queue')->collapsible(),
-                Group::make('status')->label('Status')->collapsible(),
             ])
+            ->defaultGroup($queueGroup)
+            ->groups([$queueGroup, $statusGroup])
             ->defaultSort('created_at', 'desc')
-            ->poll($this->getPollingInterval())
             ->columns([
                 TextColumn::make('name')
                     ->label('Job')
@@ -86,10 +156,55 @@ class QueueActivityWidget extends BaseTableWidget
                     ->sortable(),
             ])
             ->recordUrl(fn ($record): ?string => ViewQueue::getUrl(['queue' => $record->queue]))
-            ->defaultPaginationPageOption(5)
-            ->paginated([5, 10, 25, 'all'])
+            ->paginated(false)
             ->emptyStateHeading('No active tasks')
             ->emptyStateDescription('No pending or processing jobs right now.');
+    }
+
+    protected function boundedActiveJobsQuery(int $perQueue = 5): Builder
+    {
+        $model = new QueueJob();
+        $keyName = $model->getKeyName();
+
+        $ids = $this->applyActiveFilters($this->activeJobsQuery())
+            ->select('queue')
+            ->distinct()
+            ->orderBy('queue')
+            ->pluck('queue')
+            ->flatMap(function (string $queue) use ($keyName, $perQueue): array {
+                return $this->applyActiveFilters($this->activeJobsQuery())
+                    ->where('queue', $queue)
+                    ->orderByDesc('created_at')
+                    ->orderByDesc($keyName)
+                    ->limit($perQueue)
+                    ->pluck($keyName)
+                    ->all();
+            });
+
+        return $this->activeJobsQuery()
+            ->whereKey($ids)
+            ->orderBy('queue')
+            ->orderByDesc('created_at');
+    }
+
+    protected function applyActiveFilters(Builder $query): Builder
+    {
+        $filterQueue = $this->tableFilters['queue']['value'] ?? null;
+        $filterStatus = $this->tableFilters['status']['value'] ?? null;
+
+        if (filled($filterQueue)) {
+            $query->where('queue', $filterQueue);
+        }
+
+        if (filled($filterStatus)) {
+            $query->when(
+                $filterStatus === 'processing',
+                fn (Builder $q): Builder => $q->whereNotNull('reserved_at'),
+                fn (Builder $q): Builder => $q->whereNull('reserved_at'),
+            );
+        }
+
+        return $query;
     }
 
     protected function activeJobsQuery(): Builder
@@ -111,6 +226,14 @@ class QueueActivityWidget extends BaseTableWidget
 
     protected function getPollingInterval(): ?string
     {
+        if ($this->pollingInterval === 'off') {
+            return null;
+        }
+
+        if (filled($this->pollingInterval)) {
+            return $this->pollingInterval;
+        }
+
         $interval = (int) config('filament-queue-monitor.refresh_interval', 10);
 
         if ($interval <= 0) {

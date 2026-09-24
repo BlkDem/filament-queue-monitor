@@ -1,17 +1,17 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament;
+namespace BlkDem\FilamentQueueMonitor\Filament;
 
 use Filament\Contracts\Plugin;
 use Filament\Panel;
-use Kilo\FilamentQueueMonitor\Filament\Pages\Dashboard;
-use Kilo\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
-use Kilo\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
-use Kilo\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
-use Kilo\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
-use Kilo\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
-use Kilo\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
-use Kilo\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
 
 class FilamentQueueMonitorPlugin implements Plugin
 {

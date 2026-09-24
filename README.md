@@ -20,7 +20,7 @@ php artisan queue-monitor:install
 The install command publishes the configuration and migrations, then runs only this package's migration. Register the plugin in a Filament panel:
 
 ```php
-use Kilo\FilamentQueueMonitor\Filament\FilamentQueueMonitorPlugin;
+use BlkDem\FilamentQueueMonitor\Filament\FilamentQueueMonitorPlugin;
 
 $panel
     ->plugins([

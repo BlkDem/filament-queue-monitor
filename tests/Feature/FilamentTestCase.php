@@ -1,7 +1,7 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Tests\Feature;
+namespace BlkDem\FilamentQueueMonitor\Tests\Feature;
 
-use Kilo\FilamentQueueMonitor\Tests\TestCase;
+use BlkDem\FilamentQueueMonitor\Tests\TestCase;
 
 class FilamentTestCase extends TestCase {}

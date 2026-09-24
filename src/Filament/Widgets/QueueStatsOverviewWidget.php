@@ -1,16 +1,25 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Filament\Widgets;
+namespace BlkDem\FilamentQueueMonitor\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Kilo\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 
 class QueueStatsOverviewWidget extends BaseWidget
 {
     protected static bool $isLazy = false;
 
     protected int | string | array $columnSpan = 'full';
+
+    public ?string $pollingOverride = null;
+
+    protected $listeners = ['queueActivityPollingIntervalChanged' => 'setPollingInterval'];
+
+    public function setPollingInterval(string $interval): void
+    {
+        $this->pollingOverride = $interval;
+    }
 
     public function getColumns(): int
     {
@@ -19,6 +28,14 @@ class QueueStatsOverviewWidget extends BaseWidget
 
     protected function getPollingInterval(): ?string
     {
+        if ($this->pollingOverride === 'off') {
+            return null;
+        }
+
+        if (filled($this->pollingOverride)) {
+            return $this->pollingOverride;
+        }
+
         $interval = config('filament-queue-monitor.refresh_interval', 10);
 
         if ($interval <= 0) {

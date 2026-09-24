@@ -1,10 +1,10 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Tests\Unit;
+namespace BlkDem\FilamentQueueMonitor\Tests\Unit;
 
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
-use Kilo\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
-use Kilo\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 
 describe('Security', function () {
     it('safely parses malicious JSON payload', function () {

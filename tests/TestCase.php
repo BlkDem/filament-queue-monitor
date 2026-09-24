@@ -1,8 +1,8 @@
 <?php
 
-namespace Kilo\FilamentQueueMonitor\Tests;
+namespace BlkDem\FilamentQueueMonitor\Tests;
 
-use Kilo\FilamentQueueMonitor\FilamentQueueMonitorServiceProvider;
+use BlkDem\FilamentQueueMonitor\FilamentQueueMonitorServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
