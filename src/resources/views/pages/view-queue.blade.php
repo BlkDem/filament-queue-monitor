@@ -35,37 +35,42 @@
                 .fqm-stats-table .stat-value.danger { color: #dc2626; }
             </style>
 
-            <table class="fqm-stats-table">
-                <thead>
-                    <tr>
-                        <th class="stat-label">Status</th>
-                        <th class="stat-label">Count</th>
-                        <th class="stat-label">Description</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="stat-label">Pending</td>
-                        <td class="stat-value warning">{{ $queueInfo->pending ?? 0 }}</td>
-                        <td class="stat-label">Awaiting processing</td>
-                    </tr>
-                    <tr>
-                        <td class="stat-label">Processing</td>
-                        <td class="stat-value info">{{ $queueInfo->processing ?? 0 }}</td>
-                        <td class="stat-label">Currently being worked on</td>
-                    </tr>
-                    <tr>
-                        <td class="stat-label">Delayed</td>
-                        <td class="stat-value warning">{{ $queueInfo->delayed ?? 0 }}</td>
-                        <td class="stat-label">Scheduled for later</td>
-                    </tr>
-                    <tr>
-                        <td class="stat-label">Failed</td>
-                        <td class="stat-value danger">{{ $queueInfo->failed ?? 0 }}</td>
-                        <td class="stat-label">Failed jobs</td>
-                    </tr>
-                </tbody>
-            </table>
+            <x-filament::section
+                :collapsible="false"
+                heading="Statistics"
+            >
+                <table class="fqm-stats-table">
+                    <thead>
+                        <tr>
+                            <th class="stat-label">Status</th>
+                            <th class="stat-label">Count</th>
+                            <th class="stat-label">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="stat-label">Pending</td>
+                            <td class="stat-value warning">{{ $queueInfo->pending ?? 0 }}</td>
+                            <td class="stat-label">Awaiting processing</td>
+                        </tr>
+                        <tr>
+                            <td class="stat-label">Processing</td>
+                            <td class="stat-value info">{{ $queueInfo->processing ?? 0 }}</td>
+                            <td class="stat-label">Currently being worked on</td>
+                        </tr>
+                        <tr>
+                            <td class="stat-label">Delayed</td>
+                            <td class="stat-value warning">{{ $queueInfo->delayed ?? 0 }}</td>
+                            <td class="stat-label">Scheduled for later</td>
+                        </tr>
+                        <tr>
+                            <td class="stat-label">Failed</td>
+                            <td class="stat-value danger">{{ $queueInfo->failed ?? 0 }}</td>
+                            <td class="stat-label">Failed jobs</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </x-filament::section>
 
             <x-filament::section
                 :collapsible="false"
