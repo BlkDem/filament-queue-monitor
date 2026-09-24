@@ -20,56 +20,63 @@
                 .fqm-content > x-filament\\:section,
                 .fqm-content > section.fi-section,
                 .fqm-content > x-filament\\:actions { margin: 0; }
-                .fqm-stats-table { width: 100%; border-collapse: collapse; }
-                .fqm-stats-table th, .fqm-stats-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-                .fqm-stats-table th { font-weight: 600; color: #374151; background: #f9fafb; }
-                .fqm-stats-table td { color: #111827; }
-                .fqm-stats-table tr:last-child td { border-bottom: none; }
-                html.dark .fqm-stats-table th { color: #f9fafb; background: #1f2937; }
-                html.dark .fqm-stats-table td { color: #f9fafb; border-bottom-color: #374151; }
-                .fqm-stats-table .stat-label { color: #6b7280; }
-                html.dark .fqm-stats-table .stat-label { color: #9ca3af; }
-                .fqm-stats-table .stat-value { font-weight: 700; font-size: 1.25rem; }
-                .fqm-stats-table .stat-value.warning { color: #d97706; }
-                .fqm-stats-table .stat-value.info { color: #0891b2; }
-                .fqm-stats-table .stat-value.danger { color: #dc2626; }
+                .fqm-stats-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+                @media (min-width: 640px) { .fqm-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+                @media (min-width: 1024px) { .fqm-stats-grid { grid-template-columns: repeat(4, 1fr); } }
+                .fqm-stat-row { display: contents; }
+                .fqm-stat-cell { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+                .fqm-stats-group > .fqm-stat-cell:last-child { border-bottom: none; }
+                .fqm-stat-label { font-size: 13px; color: #6b7280; }
+                .fqm-stat-value { font-weight: 700; font-size: 1.25rem; line-height: 1.4; }
+                .fqm-stat-desc { font-size: 13px; color: #6b7280; }
+                .fqm-stat-value.warning { color: #d97706; }
+                .fqm-stat-value.info { color: #0891b2; }
+                .fqm-stat-value.danger { color: #dc2626; }
+                html.dark .fqm-stat-label, html.dark .fqm-stat-desc { color: #9ca3af; }
             </style>
 
             <x-filament::section
                 :collapsible="false"
                 heading="Statistics"
             >
-                <table class="fqm-stats-table">
-                    <thead>
-                        <tr>
-                            <th class="stat-label">Status</th>
-                            <th class="stat-label">Count</th>
-                            <th class="stat-label">Description</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="stat-label">Pending</td>
-                            <td class="stat-value warning">{{ $queueInfo->pending ?? 0 }}</td>
-                            <td class="stat-label">Awaiting processing</td>
-                        </tr>
-                        <tr>
-                            <td class="stat-label">Processing</td>
-                            <td class="stat-value info">{{ $queueInfo->processing ?? 0 }}</td>
-                            <td class="stat-label">Currently being worked on</td>
-                        </tr>
-                        <tr>
-                            <td class="stat-label">Delayed</td>
-                            <td class="stat-value warning">{{ $queueInfo->delayed ?? 0 }}</td>
-                            <td class="stat-label">Scheduled for later</td>
-                        </tr>
-                        <tr>
-                            <td class="stat-label">Failed</td>
-                            <td class="stat-value danger">{{ $queueInfo->failed ?? 0 }}</td>
-                            <td class="stat-label">Failed jobs</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="fqm-stats-group">
+                    <div class="fqm-stat-row">
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-label">Pending</span>
+                            <span class="fqm-stat-value warning">{{ $queueInfo->pending ?? 0 }}</span>
+                        </div>
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-desc">Awaiting processing</span>
+                        </div>
+                    </div>
+                    <div class="fqm-stat-row">
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-label">Processing</span>
+                            <span class="fqm-stat-value info">{{ $queueInfo->processing ?? 0 }}</span>
+                        </div>
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-desc">Currently being worked on</span>
+                        </div>
+                    </div>
+                    <div class="fqm-stat-row">
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-label">Delayed</span>
+                            <span class="fqm-stat-value warning">{{ $queueInfo->delayed ?? 0 }}</span>
+                        </div>
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-desc">Scheduled for later</span>
+                        </div>
+                    </div>
+                    <div class="fqm-stat-row">
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-label">Failed</span>
+                            <span class="fqm-stat-value danger">{{ $queueInfo->failed ?? 0 }}</span>
+                        </div>
+                        <div class="fqm-stat-cell">
+                            <span class="fqm-stat-desc">Failed jobs</span>
+                        </div>
+                    </div>
+                </div>
             </x-filament::section>
 
             <x-filament::section
