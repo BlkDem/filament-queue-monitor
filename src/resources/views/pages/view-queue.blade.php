@@ -20,31 +20,52 @@
                 .fqm-content > x-filament\\:section,
                 .fqm-content > section.fi-section,
                 .fqm-content > x-filament\\:actions { margin: 0; }
+                .fqm-stats-table { width: 100%; border-collapse: collapse; }
+                .fqm-stats-table th, .fqm-stats-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+                .fqm-stats-table th { font-weight: 600; color: #374151; background: #f9fafb; }
+                .fqm-stats-table td { color: #111827; }
+                .fqm-stats-table tr:last-child td { border-bottom: none; }
+                html.dark .fqm-stats-table th { color: #f9fafb; background: #1f2937; }
+                html.dark .fqm-stats-table td { color: #f9fafb; border-bottom-color: #374151; }
+                .fqm-stats-table .stat-label { color: #6b7280; }
+                html.dark .fqm-stats-table .stat-label { color: #9ca3af; }
+                .fqm-stats-table .stat-value { font-weight: 700; font-size: 1.25rem; }
+                .fqm-stats-table .stat-value.warning { color: #d97706; }
+                .fqm-stats-table .stat-value.info { color: #0891b2; }
+                .fqm-stats-table .stat-value.danger { color: #dc2626; }
             </style>
 
-            <x-filament::section
-                :collapsible="false"
-                heading="Statistics"
-            >
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div class="rounded-xl p-4 bg-white dark:bg-gray-800 shadow">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Pending</div>
-                        <div class="text-2xl font-bold text-warning-600">{{ $queueInfo->pending ?? 0 }}</div>
-                    </div>
-                    <div class="rounded-xl p-4 bg-white dark:bg-gray-800 shadow">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Processing</div>
-                        <div class="text-2xl font-bold text-info-600">{{ $queueInfo->processing ?? 0 }}</div>
-                    </div>
-                    <div class="rounded-xl p-4 bg-white dark:bg-gray-800 shadow">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Delayed</div>
-                        <div class="text-2xl font-bold text-warning-600">{{ $queueInfo->delayed ?? 0 }}</div>
-                    </div>
-                    <div class="rounded-xl p-4 bg-white dark:bg-gray-800 shadow">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Failed</div>
-                        <div class="text-2xl font-bold text-danger-600">{{ $queueInfo->failed ?? 0 }}</div>
-                    </div>
-                </div>
-            </x-filament::section>
+            <table class="fqm-stats-table">
+                <thead>
+                    <tr>
+                        <th class="stat-label">Status</th>
+                        <th class="stat-label">Count</th>
+                        <th class="stat-label">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="stat-label">Pending</td>
+                        <td class="stat-value warning">{{ $queueInfo->pending ?? 0 }}</td>
+                        <td class="stat-label">Awaiting processing</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Processing</td>
+                        <td class="stat-value info">{{ $queueInfo->processing ?? 0 }}</td>
+                        <td class="stat-label">Currently being worked on</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Delayed</td>
+                        <td class="stat-value warning">{{ $queueInfo->delayed ?? 0 }}</td>
+                        <td class="stat-label">Scheduled for later</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Failed</td>
+                        <td class="stat-value danger">{{ $queueInfo->failed ?? 0 }}</td>
+                        <td class="stat-label">Failed jobs</td>
+                    </tr>
+                </tbody>
+            </table>
 
             <x-filament::section
                 :collapsible="false"
