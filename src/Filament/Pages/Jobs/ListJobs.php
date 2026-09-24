@@ -77,6 +77,7 @@ class ListJobs extends BaseQueueTablePage
             'attempts' => $job->attempts,
             'createdAt' => $job->createdAt?->toDateTimeString(),
             'availableAt' => $job->availableAt?->toDateTimeString() ?? $job->createdAt?->toDateTimeString(),
+            'isDelayed' => $job->availableAt && $job->availableAt->gt(now()),
             'payload' => $job->payload,
         ];
     }
@@ -107,6 +108,12 @@ class ListJobs extends BaseQueueTablePage
                 TextColumn::make('availableAt')
                     ->label('Available At')
                     ->dateTime()
+                    ->sortable(),
+                TextColumn::make('isDelayed')
+                    ->label('Delayed')
+                    ->badge()
+                    ->color('warning')
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Yes' : 'No')
                     ->sortable(),
             ])
             ->searchPlaceholder('Search jobs...')
