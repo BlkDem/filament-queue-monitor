@@ -75,6 +75,7 @@ class ListJobs extends BaseQueueTablePage
     {
         $payloadData = $job->resolvePayloadData();
         $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? 'Unknown';
+        $status = $job->reservedAt !== null ? 'processing' : 'pending';
 
         return [
             'id' => (string) ($job->uuid ?? $job->id ?? ''),
@@ -85,6 +86,7 @@ class ListJobs extends BaseQueueTablePage
             'createdAt' => $job->createdAt?->toDateTimeString(),
             'availableAt' => $job->availableAt?->toDateTimeString() ?? $job->createdAt?->toDateTimeString(),
             'isDelayed' => $job->availableAt && $job->availableAt->gt(now()),
+            'status' => $status,
             'payload' => $job->payload,
         ];
     }
@@ -103,6 +105,11 @@ class ListJobs extends BaseQueueTablePage
                 TextColumn::make('queue')
                     ->label('Queue')
                     ->badge()
+                    ->sortable(),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'processing' ? 'info' : 'gray')
                     ->sortable(),
                 TextColumn::make('attempts')
                     ->label('Attempts')
