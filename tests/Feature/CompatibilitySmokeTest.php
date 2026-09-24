@@ -2,14 +2,20 @@
 
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Panel;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Builder;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\FailedJob as QueueMonitorFailedJob;
 
 it('builds queue monitor tables', function () {
     config()->set('filament-queue-monitor.driver', 'database');
@@ -650,6 +656,105 @@ it('filters the failed jobs by failed at time boundaries', function () {
     $page->flushCachedTableRecords();
     expect($page->getTableRecords()->total())->toBe(2); // Mid + After
 });
+
+it('resolves the failed job detail page with readable payload and exception', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+    config()->set('filament-queue-monitor.refresh_interval', 0);
+
+    $uuid = insertSmokeFailedJob(
+        'errors',
+        'App\\Jobs\\SimulateErrorJob',
+        "RuntimeException: boom\n    at line 42",
+        extraPayload: '{"orderId":1234,"meta":{"tags":["a","b"]}}',
+    );
+
+    $page = new ViewFailedJob();
+    $page->mount($uuid);
+
+    $job = $page->getJob();
+
+    expect($job)->toBeInstanceOf(FailedJobInfo::class)
+        ->and($page->getJobName())->toBe('App\\Jobs\\SimulateErrorJob')
+        ->and($job->exception)->toContain('RuntimeException');
+
+    $viewData = $page->getViewData();
+
+    expect($viewData['payloadData']['displayName'])->toBe('App\\Jobs\\SimulateErrorJob')
+        ->and($viewData['payloadData']['extra'])->toContain('orderId')
+        ->and($viewData['jobName'])->toBe('App\\Jobs\\SimulateErrorJob');
+});
+
+it('links the failed job name to the job detail page', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+    config()->set('filament-queue-monitor.refresh_interval', 0);
+
+    $uuid = insertSmokeFailedJob('default', 'App\\Jobs\\SomeJob', 'exc');
+
+    bindTestFilamentManager([ListFailedJobs::class, ViewFailedJob::class]);
+
+    $page = new ListFailedJobs();
+    $page->bootedInteractsWithTable();
+
+    $column = collect($page->getTable()->getColumns())->first(fn ($c) => $c->getName() === 'job');
+
+    expect($column)->not->toBeNull();
+
+    $model = new QueueMonitorFailedJob();
+    $model->id = $uuid;
+    $model->uuid = $uuid;
+
+    $column->record($model);
+
+    expect($column->getUrl())->toContain('/queue-monitor/failed-jobs/' . $uuid);
+});
+
+it('renders the failed job detail view with payload and collapsible exception', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+    config()->set('filament-queue-monitor.refresh_interval', 0);
+
+    $uuid = insertSmokeFailedJob(
+        'errors',
+        'App\\Jobs\\SimulateErrorJob',
+        "RuntimeException: boom\n    at line 42",
+        extraPayload: '{"orderId":1234}',
+    );
+
+    bindTestFilamentManager([ListFailedJobs::class, ViewFailedJob::class]);
+
+    $page = new ViewFailedJob();
+    $page->mount($uuid);
+
+    $html = view('filament-queue-monitor::pages.view-failed-job', $page->getViewData())->render();
+
+    expect($html)->toContain('Job information')
+        ->and($html)->toContain('App\\Jobs\\SimulateErrorJob')
+        ->and($html)->toContain('Payload')
+        ->and($html)->toContain('Error')
+        ->and($html)->toContain('fqm-codebox')
+        ->and($html)->toContain('RuntimeException')
+        ->and($html)->toContain('&quot;displayName&quot;');
+});
+
+function bindTestFilamentManager(array $pages): void
+{
+    app()->instance('filament', new \Filament\FilamentManager);
+    app()->alias('filament', \Filament\FilamentManager::class);
+
+    $panel = Panel::make('admin')
+        ->id('admin')
+        ->path('admin')
+        ->pages($pages);
+
+    Filament::registerPanel($panel);
+    Filament::setCurrentPanel($panel);
+
+    foreach ($pages as $pageClass) {
+        $name = $pageClass::getRouteName('admin');
+        $path = $pageClass::getRoutePath($panel);
+
+        Route::get($path, fn () => 'ok')->name($name);
+    }
+}
 
 function insertSmokeFailedJob(
     string $queue,

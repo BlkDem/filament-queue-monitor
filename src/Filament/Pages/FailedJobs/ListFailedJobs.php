@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 
 class ListFailedJobs extends BaseQueueTablePage
@@ -102,6 +103,7 @@ class ListFailedJobs extends BaseQueueTablePage
             ->columns([
                 TextColumn::make('job')
                     ->label('Job')
+                    ->url(fn ($record): ?string => ViewFailedJob::getUrl(['id' => (string) $record->id]))
                     ->formatStateUsing(fn (string $state) => Str::afterLast($state, '\\'))
                     ->tooltip(fn ($record): string => (string) $record->job)
                     ->description(fn ($record): string => '#'.$record->id
