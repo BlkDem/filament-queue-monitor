@@ -37,7 +37,7 @@ class ListQueues extends BaseQueueTablePage
 
     protected function getSearchableFields(): array
     {
-        return ['name'];
+        return ['queue'];
     }
 
     protected function resolveAllRecords(): array
@@ -47,7 +47,7 @@ class ListQueues extends BaseQueueTablePage
         return array_map(function (QueueInfo $info): array {
             return [
                 'id' => $info->name,
-                'name' => $info->name,
+                'queue' => $info->name,
                 'pending' => $info->pending,
                 'processing' => $info->processing,
                 'delayed' => $info->delayed,
@@ -64,7 +64,7 @@ class ListQueues extends BaseQueueTablePage
             ->query($this->getTableQuery())
             ->poll($this->getTablePollingInterval())
             ->columns([
-                TextColumn::make('name')
+                TextColumn::make('queue')
                     ->label('Queue')
                     ->searchable()
                     ->sortable()
@@ -92,9 +92,9 @@ class ListQueues extends BaseQueueTablePage
                     ->dateTime()
                     ->sortable(),
             ])
-            ->recordUrl(fn ($record) => is_array($record) ? null : ViewQueue::getUrl(['queue' => $record->name]))
+            ->recordUrl(fn ($record) => is_array($record) ? null : ViewQueue::getUrl(['queue' => $record->queue]))
             ->searchPlaceholder('Search queues...')
-            ->defaultSort('name', 'asc')
+            ->defaultSort('queue', 'asc')
             ->paginated([10, 25, 50]);
 
         if (Version::isFilament4()) {

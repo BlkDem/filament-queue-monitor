@@ -657,6 +657,29 @@ it('filters the failed jobs by failed at time boundaries', function () {
     expect($page->getTableRecords()->total())->toBe(2); // Mid + After
 });
 
+it('shows real queue names on the queues page (not Unknown)', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+    config()->set('filament-queue-monitor.refresh_interval', 0);
+
+    DB::table('jobs')->insert([
+        'queue' => 'test-queue',
+        'payload' => json_encode(['data' => []]),
+        'attempts' => 0,
+        'reserved_at' => null,
+        'available_at' => now()->timestamp,
+        'created_at' => now()->timestamp,
+    ]);
+
+    $page = new ListQueues();
+    $page->bootedInteractsWithTable();
+
+    $records = $page->getTableRecords()->getCollection();
+
+    expect($records)->not->toBeEmpty()
+        ->and($records->first()->queue)->toBe('test-queue')
+        ->and($records->first()->queue)->not->toBe('Unknown');
+});
+
 it('resolves the failed job detail page with readable payload and exception', function () {
     config()->set('filament-queue-monitor.driver', 'database');
     config()->set('filament-queue-monitor.refresh_interval', 0);
