@@ -1,11 +1,13 @@
 <div class="fi-page">
     <div class="fi-page-header-main-ctn">
         <header class="fi-header">
-            <x-filament::breadcrumbs :breadcrumbs="[
-                \BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard::getUrl() => 'Queue Monitor',
-            ]" />
+            <div>
+                <x-filament::breadcrumbs :breadcrumbs="[
+                    \BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard::getUrl() => 'Queue Monitor',
+                ]" />
 
-            <h1 class="fi-header-heading">Queues</h1>
+                <h1 class="fi-header-heading">Queues</h1>
+            </div>
         </header>
     </div>
 

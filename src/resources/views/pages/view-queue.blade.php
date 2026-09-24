@@ -1,13 +1,15 @@
 <div class="fi-page">
     <div class="fi-page-header-main-ctn">
         <header class="fi-header">
-            <x-filament::breadcrumbs :breadcrumbs="[
-                \BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard::getUrl() => 'Queue Monitor',
-                \BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues::getUrl() => 'Queues',
-            ]" />
+            <div>
+                <x-filament::breadcrumbs :breadcrumbs="[
+                    \BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard::getUrl() => 'Queue Monitor',
+                    \BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues::getUrl() => 'Queues',
+                ]" />
 
-            <h1 class="fi-header-heading">Queue Details: {{ $queueInfo->name ?? $queue }}</h1>
-            <p class="fi-header-subheading">Statistics for the selected queue</p>
+                <h1 class="fi-header-heading">Queue Details: {{ $queueInfo->name ?? $queue }}</h1>
+                <p class="fi-header-subheading">Statistics for the selected queue</p>
+            </div>
         </header>
     </div>
 
