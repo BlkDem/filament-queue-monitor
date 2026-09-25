@@ -162,20 +162,20 @@ class ListDelayedJobs extends BaseQueueTablePage
                     ->label('Pushed At')
                     ->form([
                         DateTimePicker::make('from')
-                            ->label('From Date/Time')
+                            ->label('From Pushed At')
                             ->native(false),
                         DateTimePicker::make('until')
-                            ->label('Until Date/Time')
+                            ->label('Until Pushed At')
                             ->native(false),
                     ]),
                 Filter::make('availableAt')
                     ->label('Available At')
                     ->form([
                         DateTimePicker::make('from')
-                            ->label('From Date/Time')
+                            ->label('From Available At')
                             ->native(false),
                         DateTimePicker::make('until')
-                            ->label('Until Date/Time')
+                            ->label('Until Available At')
                             ->native(false),
                     ]),
             ])

@@ -92,10 +92,10 @@ class ListFailedJobs extends BaseQueueTablePage
                     ->label('Failed At')
                     ->form([
                         DateTimePicker::make('from')
-                            ->label('From Date/Time')
+                            ->label('From Failed At')
                             ->native(false),
                         DateTimePicker::make('until')
-                            ->label('Until Date/Time')
+                            ->label('Until Failed At')
                             ->native(false),
                     ])
                     ->query(function () {}),
