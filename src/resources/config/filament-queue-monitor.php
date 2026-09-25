@@ -28,6 +28,10 @@ return [
         'database' => env('QUEUE_MONITOR_FAILED_JOBS_DATABASE', null),
     ],
 
+    'stuck_jobs' => [
+        'threshold_hours' => env('QUEUE_MONITOR_STUCK_JOBS_THRESHOLD_HOURS', 12),
+    ],
+
     'redis' => [
         'connection' => env('QUEUE_MONITOR_REDIS_CONNECTION', null),
         'queues' => env('QUEUE_MONITOR_REDIS_QUEUES', []),

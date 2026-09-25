@@ -48,6 +48,7 @@ class QueueStatsOverviewWidget extends BaseWidget
     protected function getStats(): array
     {
         $manager = app(QueueMonitorManager::class);
+        $driver = $manager->driver();
 
         $allStats = [
             'queues' => 0,
@@ -56,12 +57,15 @@ class QueueStatsOverviewWidget extends BaseWidget
             'failed' => 0,
         ];
 
-        foreach ($manager->driver()->getQueues() as $queueInfo) {
+        foreach ($driver->getQueues() as $queueInfo) {
             $allStats['queues']++;
             $allStats['pending'] += $queueInfo->pending;
             $allStats['processing'] += $queueInfo->processing;
             $allStats['failed'] += $queueInfo->failed;
         }
+
+        $thresholdHours = config('filament-queue-monitor.stuck_jobs.threshold_hours', 12);
+        $stuckCount = $driver->stuckJobsCount($thresholdHours);
 
         return [
             Stat::make('Queues', $allStats['queues'])
@@ -75,9 +79,10 @@ class QueueStatsOverviewWidget extends BaseWidget
             Stat::make('Processing', $allStats['processing'])
                 ->icon('heroicon-o-arrow-path')
                 ->color($allStats['processing'] > 0 ? 'info' : 'success'),
-            Stat::make('Failed', $allStats['failed'])
+            Stat::make('Stuck Jobs', $stuckCount)
+                ->description('Stuck > ' . $thresholdHours . 'h (reserved_at)')
                 ->icon('heroicon-o-exclamation-triangle')
-                ->color($allStats['failed'] > 0 ? 'danger' : 'success'),
+                ->color($stuckCount > 0 ? 'danger' : 'success'),
         ];
     }
 }

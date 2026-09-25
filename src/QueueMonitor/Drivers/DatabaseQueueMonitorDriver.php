@@ -179,6 +179,16 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         return $jobs;
     }
 
+    public function stuckJobsCount(int $thresholdHours): int
+    {
+        $threshold = now()->subHours($thresholdHours)->timestamp;
+
+        return $this->database->table($this->table)
+            ->whereNotNull('reserved_at')
+            ->where('reserved_at', '<', $threshold)
+            ->count();
+    }
+
     public function findFailedJob(string $id): ?FailedJobInfo
     {
         $record = $this->getFailer()->find($id);

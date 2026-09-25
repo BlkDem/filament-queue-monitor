@@ -194,6 +194,19 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         return $jobs;
     }
 
+    public function stuckJobsCount(int $thresholdHours): int
+    {
+        $threshold = now()->subHours($thresholdHours)->timestamp;
+        $count = 0;
+
+        foreach ($this->configuredQueues() as $queue) {
+            $key = $this->getQueueKey($queue) . ':reserved';
+            $count += $this->redis()->zcount($key, 0, $threshold);
+        }
+
+        return $count;
+    }
+
     public function findFailedJob(string $id): ?FailedJobInfo
     {
         $record = $this->getFailer()->find($id);
