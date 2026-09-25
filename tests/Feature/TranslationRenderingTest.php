@@ -100,6 +100,13 @@ it('renders the failed job detail view in russian', function () {
         ->and($html)->not->toContain('Job information');
 });
 
+it('wraps the failed job detail content in the filament page shell', function () {
+    $html = file_get_contents(__DIR__ . '/../../src/resources/views/pages/view-failed-job.blade.php');
+
+    expect($html)->toContain('class="fi-page"')
+        ->toContain('flex flex-col gap-y-8 py-8');
+});
+
 it('renders the queue details view in russian', function () {
     config()->set('filament-queue-monitor.driver', 'database');
     App::setLocale('ru');
