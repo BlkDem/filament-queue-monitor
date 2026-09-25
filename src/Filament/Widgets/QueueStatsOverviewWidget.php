@@ -80,8 +80,8 @@ class QueueStatsOverviewWidget extends BaseWidget
         $stuckCount = $driver->stuckJobsCount($thresholdHours);
 
         return [
-            Stat::make('Queues', $allStats['queues'])
-                ->description('Total queues: ' . $activeQueuesCount . ' active')
+            Stat::make('Queues', $activeQueuesCount)
+                ->description('Active queues: ' . $activeQueuesCount)
                 ->icon('heroicon-o-queue-list')
                 ->color('gray'),
             Stat::make('Pending', $allStats['pending'])
