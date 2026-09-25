@@ -7,6 +7,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class ViewQueue extends Page
 {
@@ -17,14 +18,12 @@ class ViewQueue extends Page
 
     public static function getNavigationGroup(): ?string
     {
-        $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
-
-        return is_string($group) && $group !== '' ? $group : 'Queue Monitor';
+        return Trans::navigationGroup();
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'Queue Details';
+        return Trans::get('navigation.queue_details');
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -48,20 +47,20 @@ class ViewQueue extends Page
         $info = $this->getInfo();
 
         return [
-            Stat::make('Pending', $info->pending)
-                ->description('Awaiting processing')
+            Stat::make(Trans::get('stats.pending'), $info->pending)
+                ->description(Trans::get('stats.description.awaiting_processing'))
                 ->icon('heroicon-o-clock')
                 ->color($info->pending > 0 ? 'warning' : 'success'),
-            Stat::make('Processing', $info->processing)
-                ->description('Currently being worked on')
+            Stat::make(Trans::get('stats.processing'), $info->processing)
+                ->description(Trans::get('stats.description.currently_working'))
                 ->icon('heroicon-o-arrow-path')
                 ->color($info->processing > 0 ? 'info' : 'success'),
-            Stat::make('Delayed', $info->delayed)
-                ->description('Scheduled for later')
+            Stat::make(Trans::get('stats.delayed'), $info->delayed)
+                ->description(Trans::get('stats.description.scheduled_later'))
                 ->icon('heroicon-o-calendar')
                 ->color($info->delayed > 0 ? 'warning' : 'success'),
-            Stat::make('Failed', $info->failed)
-                ->description('Failed jobs')
+            Stat::make(Trans::get('stats.failed'), $info->failed)
+                ->description(Trans::get('stats.description.failed_count'))
                 ->icon('heroicon-o-exclamation-triangle')
                 ->color($info->failed > 0 ? 'danger' : 'success'),
         ];

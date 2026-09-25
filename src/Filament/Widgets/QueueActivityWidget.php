@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\View\TablesRenderHook;
 
@@ -72,7 +73,7 @@ class QueueActivityWidget extends BaseTableWidget
         };
 
         $queueGroup = Group::make('queue')
-            ->label('Queue')
+            ->label(Trans::get('common.queue'))
             ->collapsible()
             ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
                 $value = (string) $record->queue;
@@ -81,7 +82,7 @@ class QueueActivityWidget extends BaseTableWidget
             });
 
         $statusGroup = Group::make('status')
-            ->label('Status')
+            ->label(Trans::get('common.status'))
             ->collapsible()
             ->orderQueryUsing(function (Builder $query, string $direction): Builder {
                 $query->orderByRaw("(CASE WHEN reserved_at IS NOT NULL THEN 'processing' ELSE 'pending' END) {$direction}");
@@ -91,28 +92,28 @@ class QueueActivityWidget extends BaseTableWidget
             ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
                 $value = (string) $record->status;
 
-                return $value.' ('.($groupCounts('status')[$value] ?? 0).')';
+                return Trans::status($value).' ('.($groupCounts('status')[$value] ?? 0).')';
             });
 
         $this->collapseGroupsByDefault($table);
 
         return $table
-            ->heading('Queue Activity')
-            ->description('Current tasks in each queue — the same counts as the stats above')
+            ->heading(Trans::get('activity.heading'))
+            ->description(Trans::get('activity.description'))
             ->query(fn (): Builder => $this->boundedActiveJobsQuery())
             ->filters([
                 SelectFilter::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->options(fn (): array => $this->activeJobsQuery()
                         ->distinct()
                         ->orderBy('queue')
                         ->pluck('queue', 'queue')
                         ->all()),
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(Trans::get('common.status'))
                     ->options([
-                        'pending' => 'pending',
-                        'processing' => 'processing',
+                        'pending' => Trans::get('status.pending'),
+                        'processing' => Trans::get('status.processing'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $value = $data['value'] ?? null;
@@ -129,36 +130,37 @@ class QueueActivityWidget extends BaseTableWidget
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Job')
+                    ->label(Trans::get('common.job'))
                     ->formatStateUsing(fn (string $state) => Str::afterLast($state, '\\'))
                     ->tooltip(fn ($record): string => (string) $record->name)
                     ->wrap()
                     ->description(fn ($record): string => (string) $record->name),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(Trans::get('common.status'))
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => Trans::status($state))
                     ->color(fn (string $state): string => $state === 'processing' ? 'info' : 'gray')
                     ->tooltip(fn (string $state): string => $state === 'processing'
-                        ? 'Reserved by a worker'
-                        : 'Queued, ready to run'),
+                        ? Trans::get('activity.reserved_tooltip')
+                        : Trans::get('activity.queued_tooltip')),
                 TextColumn::make('attempts')
-                    ->label('Attempts')
+                    ->label(Trans::get('common.attempts'))
                     ->badge()
                     ->color(fn ($state): string => (int) $state > 0 ? 'warning' : 'gray'),
                 TextColumn::make('reserved_at')
-                    ->label('Running since')
+                    ->label(Trans::get('activity.running_since'))
                     ->dateTime()
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder(Trans::get('common.empty_value')),
                 TextColumn::make('created_at')
-                    ->label('Queued')
+                    ->label(Trans::get('activity.queued'))
                     ->dateTime()
                     ->sortable(),
             ])
             ->recordUrl(fn ($record): ?string => ViewQueue::getUrl(['queue' => $record->queue]))
             ->paginated(false)
-            ->emptyStateHeading('No active tasks')
-            ->emptyStateDescription('No pending or processing jobs right now.');
+            ->emptyStateHeading(Trans::get('activity.empty_heading'))
+            ->emptyStateDescription(Trans::get('activity.empty_description'));
     }
 
     protected function boundedActiveJobsQuery(int $perQueue = 5): Builder

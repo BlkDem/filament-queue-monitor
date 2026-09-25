@@ -7,6 +7,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class ViewFailedJob extends Page
 {
@@ -22,7 +23,7 @@ class ViewFailedJob extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'Failed Job';
+        return Trans::get('navigation.failed_job');
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -54,7 +55,7 @@ class ViewFailedJob extends Page
 
     public function getJobName(): string
     {
-        return $this->getJob()->resolveJobName() ?? 'Unknown';
+        return $this->getJob()->resolveJobName() ?? Trans::get('failed_job_detail.unknown');
     }
 
     public function getPayloadData(): array

@@ -6,6 +6,7 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class QueueStatsOverviewWidget extends BaseWidget
 {
@@ -84,19 +85,19 @@ class QueueStatsOverviewWidget extends BaseWidget
         $stuckCount = $driver->stuckJobsCount($thresholdHours);
 
         return [
-            Stat::make('Queues', $activeQueuesCount)
-                ->description('Total queues: ' . $totalConfiguredQueues)
+            Stat::make(Trans::get('stats.queues'), $activeQueuesCount)
+                ->description(Trans::get('stats.description.total_queues', ['count' => $totalConfiguredQueues]))
                 ->icon('heroicon-o-queue-list')
                 ->color('gray'),
-            Stat::make('Pending', $allStats['pending'])
-                ->description($allStats['processing'] . ' processing')
+            Stat::make(Trans::get('stats.pending'), $allStats['pending'])
+                ->description(Trans::get('stats.description.processing_count', ['count' => $allStats['processing']]))
                 ->icon('heroicon-o-clock')
                 ->color($allStats['pending'] > 0 ? 'warning' : 'success'),
-            Stat::make('Processing', $allStats['processing'])
+            Stat::make(Trans::get('stats.processing'), $allStats['processing'])
                 ->icon('heroicon-o-arrow-path')
                 ->color($allStats['processing'] > 0 ? 'info' : 'success'),
-            Stat::make('Stuck Jobs', $stuckCount)
-                ->description('Stuck > ' . $thresholdHours . 'h (reserved_at)')
+            Stat::make(Trans::get('stats.stuck_jobs'), $stuckCount)
+                ->description(Trans::get('stats.description.stuck_jobs', ['hours' => $thresholdHours]))
                 ->icon('heroicon-o-exclamation-triangle')
                 ->color($stuckCount > 0 ? 'danger' : 'success'),
         ];

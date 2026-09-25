@@ -6,6 +6,7 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 use Carbon\Carbon;
 
 class QueueCountersWidget extends BaseWidget
@@ -64,18 +65,18 @@ class QueueCountersWidget extends BaseWidget
         $totalProcessed = $stats['processed'];
 
         return [
-            Stat::make('Delayed Jobs', $totalDelayed)
-                ->description('Jobs waiting to be processed')
+            Stat::make(Trans::get('stats.delayed_jobs'), $totalDelayed)
+                ->description(Trans::get('stats.description.awaiting_delayed'))
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning')
                 ->chart([$totalDelayed]),
-            Stat::make('Failed Jobs', $totalFailed)
-                ->description('Jobs that have failed')
+            Stat::make(Trans::get('stats.failed_jobs'), $totalFailed)
+                ->description(Trans::get('stats.description.has_failed'))
                 ->descriptionIcon('heroicon-o-exclamation-triangle')
                 ->color('danger')
                 ->chart([$totalFailed]),
-            Stat::make('Processed (Last Hour)', $totalProcessed)
-                ->description('Jobs completed in the last hour')
+            Stat::make(Trans::get('stats.processed_last_hour'), $totalProcessed)
+                ->description(Trans::get('stats.description.processed_last_hour'))
                 ->descriptionIcon('heroicon-o-check-circle')
                 ->color('success')
                 ->chart([$totalProcessed]),

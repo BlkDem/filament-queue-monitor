@@ -8,6 +8,7 @@ use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class FilamentQueueMonitorServiceProvider extends ServiceProvider
 {
@@ -30,6 +31,11 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->loadTranslationsFrom(
+            __DIR__ . '/resources/lang',
+            Trans::NAMESPACE
+        );
+
         $this->loadViewsFrom(
             __DIR__ . '/resources/views',
             'filament-queue-monitor'
@@ -50,6 +56,10 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/resources/views' => resource_path('views/vendor/filament-queue-monitor'),
         ], 'filament-queue-monitor-views');
+
+        $this->publishes([
+            __DIR__ . '/resources/lang' => lang_path('vendor/'.Trans::NAMESPACE),
+        ], 'filament-queue-monitor-lang');
     }
 
     protected function registerManager(): void

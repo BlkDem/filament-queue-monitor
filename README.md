@@ -17,7 +17,7 @@ composer require kilo/filament-queue-monitor
 php artisan queue-monitor:install
 ```
 
-The install command publishes the configuration and migrations, then runs only this package's migration. Register the plugin in a Filament panel:
+The install command publishes the configuration, migrations and translations, then runs only this package's migration. Register the plugin in a Filament panel:
 
 ```php
 use BlkDem\FilamentQueueMonitor\Filament\FilamentQueueMonitorPlugin;
@@ -49,7 +49,7 @@ return [
 
     'navigation' => [
         'enabled' => env('QUEUE_MONITOR_NAV_ENABLED', true),
-        'group' => env('QUEUE_MONITOR_NAV_GROUP', 'Queue Monitor'),
+        'group' => env('QUEUE_MONITOR_NAV_GROUP'),
         'sort' => env('QUEUE_MONITOR_NAV_SORT', 0),
     ],
 
@@ -78,7 +78,7 @@ return [
 | `QUEUE_MONITOR_DRIVER` | — | Queue driver to monitor: `database` or `redis` |
 | `QUEUE_MONITOR_AUTHORIZE` | `false` | Access control. Set to `true` to allow all authenticated users. Use a Closure or Gate ability for custom logic. |
 | `QUEUE_MONITOR_NAV_ENABLED` | `true` | Show/hide navigation group |
-| `QUEUE_MONITOR_NAV_GROUP` | `Queue Monitor` | Navigation group label |
+| `QUEUE_MONITOR_NAV_GROUP` | *(translated)* | Navigation group label. Falls back to the translated `navigation.group` line when unset. |
 | `QUEUE_MONITOR_NAV_SORT` | `0` | Navigation sort order |
 | `QUEUE_MONITOR_REFRESH_INTERVAL` | `10` | Dashboard auto-refresh interval in seconds (0 = disabled) |
 | `QUEUE_MONITOR_METRICS_ENABLED` | `true` | Enable metrics collection |
@@ -178,7 +178,7 @@ Columns: Job (clickable → detail page), Queue (badge), Payload, Exception, Fai
 ## Commands
 
 ```bash
-# Install (publish config, migrations, run migrations)
+# Install (publish config, migrations, translations, run migrations)
 php artisan queue-monitor:install
 
 # Prune old metrics (older than retention_days)
@@ -200,6 +200,61 @@ Metrics are automatically collected via Laravel queue events:
 - `JobProcessed` — increments processed count, records duration
 - `JobFailed` — increments failed count
 - `JobExceptionOccurred` — records exception
+
+## Translations
+
+Every user-facing string in the package is translated. English (`en`) and Russian (`ru`) ship with the package; any other locale falls back to English.
+
+The UI follows your application's `app.locale`, so setting the panel/app locale is all that is required:
+
+```php
+// config/app.php
+'locale' => 'ru',
+```
+
+Filament panels can also be localised independently:
+
+```php
+$panel->locale('ru');
+```
+
+### Publishing
+
+```bash
+php artisan vendor:publish --tag=filament-queue-monitor-lang
+```
+
+Published files land in `lang/vendor/blkdem/filament-queue-monitor/{locale}/queue_monitor.php`. Edit them to adjust wording, or add a new locale by copying the `en` file:
+
+```bash
+mkdir -p lang/vendor/blkdem/filament-queue-monitor/fr
+cp lang/vendor/blkdem/filament-queue-monitor/en/queue_monitor.php \
+   lang/vendor/blkdem/filament-queue-monitor/fr/queue_monitor.php
+```
+
+Only the keys you need have to be present — any missing key falls back to English.
+
+### Adding strings in your own code
+
+Use the `Trans` helper so the namespace stays consistent:
+
+```php
+use BlkDem\FilamentQueueMonitor\Support\Trans;
+
+Trans::get('stats.description.total_queues', ['count' => 4]); // "Total queues: 4"
+Trans::status('pending');                                    // "Pending"
+Trans::delayedFor(125);                                      // "3 h"
+```
+
+The raw translation namespace is also available directly:
+
+```php
+__('blkdem/filament-queue-monitor::queue_monitor.navigation.label');
+```
+
+### Overriding the navigation group
+
+`QUEUE_MONITOR_NAV_GROUP` overrides the navigation group label. When it is unset the translated `navigation.group` line is used.
 
 ## License
 

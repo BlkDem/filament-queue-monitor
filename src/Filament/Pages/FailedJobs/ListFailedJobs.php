@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class ListFailedJobs extends BaseQueueTablePage
 {
@@ -31,7 +32,7 @@ class ListFailedJobs extends BaseQueueTablePage
 
     public static function getNavigationLabel(): string
     {
-        return 'Failed Jobs';
+        return Trans::get('navigation.failed_jobs');
     }
 
     public static function getNavigationSort(): ?int
@@ -74,7 +75,7 @@ class ListFailedJobs extends BaseQueueTablePage
             ->poll($this->getTablePollingInterval())
             ->filters([
                 SelectFilter::make('job')
-                    ->label('Job')
+                    ->label(Trans::get('common.job'))
                     ->options(fn (): array => collect($this->resolveAllRecords())
                         ->pluck('job', 'job')
                         ->reject(fn (?string $job): bool => blank($job))
@@ -82,27 +83,27 @@ class ListFailedJobs extends BaseQueueTablePage
                         ->sort()
                         ->toArray()),
                 SelectFilter::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->options(fn (): array => collect($this->resolveAllRecords())
                         ->pluck('queue', 'queue')
                         ->reject(fn (?string $queue): bool => blank($queue))
                         ->sort()
                         ->toArray()),
                 Filter::make('failedAt')
-                    ->label('Failed At')
+                    ->label(Trans::get('filters.failed_at'))
                     ->form([
                         DateTimePicker::make('from')
-                            ->label('From Failed At')
+                            ->label(Trans::get('filters.from_failed_at'))
                             ->native(false),
                         DateTimePicker::make('until')
-                            ->label('Until Failed At')
+                            ->label(Trans::get('filters.until_failed_at'))
                             ->native(false),
                     ])
                     ->query(function () {}),
             ])
             ->columns([
                 TextColumn::make('job')
-                    ->label('Job')
+                    ->label(Trans::get('common.job'))
                     ->url(fn ($record): ?string => ViewFailedJob::getUrl(['id' => (string) $record->id]))
                     ->formatStateUsing(fn (string $state) => Str::afterLast($state, '\\'))
                     ->tooltip(fn ($record): string => (string) $record->job)
@@ -113,61 +114,63 @@ class ListFailedJobs extends BaseQueueTablePage
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->badge()
                     ->sortable(),
                 TextColumn::make('payload')
-                    ->label('Payload')
+                    ->label(Trans::get('failed_jobs.payload'))
                     ->wrap()
                     ->limit(100)
-                    ->placeholder('—')
+                    ->placeholder(Trans::get('common.empty_value'))
                     ->copyable(),
                 TextColumn::make('exception')
-                    ->label('Exception')
+                    ->label(Trans::get('failed_jobs.exception'))
                     ->searchable()
                     ->wrap()
                     ->limit(100),
                 TextColumn::make('failedAt')
-                    ->label('Failed At')
+                    ->label(Trans::get('failed_jobs.failed_at'))
                     ->dateTime()
                     ->sortable(),
             ])
             ->actions([
                 $actionClass::make('retry')
-                    ->label('Retry')
+                    ->label(Trans::get('actions.retry'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('info')
                     ->requiresConfirmation()
-                    ->modalHeading('Retry Failed Job')
-                    ->modalDescription('Are you sure you want to retry this failed job?')
+                    ->modalHeading(Trans::get('actions.retry_heading'))
+                    ->modalDescription(Trans::get('actions.retry_description'))
                     ->action(function ($record) {
                         $this->getDriver()->retryFailedJob($record->id);
 
                         Notification::make()
-                            ->title('Job Retried')
-                            ->body("Failed job #{$record->id} has been retried.")
+                            ->title(Trans::get('actions.retried_title'))
+                            ->body(Trans::get('actions.retried_body', ['id' => $record->id]))
                             ->success()
                             ->send();
                     }),
                 $actionClass::make('delete')
-                    ->label('Delete')
+                    ->label(Trans::get('actions.delete'))
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalHeading('Delete Failed Job')
-                    ->modalDescription('Are you sure you want to delete this failed job? This action cannot be undone.')
-                    ->modalSubmitActionLabel('Delete')
+                    ->modalHeading(Trans::get('actions.delete_heading'))
+                    ->modalDescription(Trans::get('actions.delete_description'))
+                    ->modalSubmitActionLabel(Trans::get('actions.delete'))
                     ->action(function ($record) {
                         $this->getDriver()->deleteFailedJob($record->id);
 
                         Notification::make()
-                            ->title('Job Deleted')
-                            ->body("Failed job #{$record->id} has been deleted.")
+                            ->title(Trans::get('actions.deleted_title'))
+                            ->body(Trans::get('actions.deleted_body', ['id' => $record->id]))
                             ->success()
                             ->send();
                     }),
             ])
-            ->searchPlaceholder('Search failed jobs...')
+            ->searchPlaceholder(Trans::get('failed_jobs.search_placeholder'))
+            ->emptyStateHeading(Trans::get('failed_jobs.title'))
+            ->emptyStateDescription(Trans::get('failed_jobs.empty'))
             ->defaultSort('failedAt', 'desc')
             ->paginated([10, 25, 50]);
 

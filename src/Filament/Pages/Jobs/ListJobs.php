@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 use BlkDem\FilamentQueueMonitor\Support\Version;
 use Carbon\Carbon;
 
@@ -30,7 +31,7 @@ class ListJobs extends BaseQueueTablePage
 
     public static function getNavigationLabel(): string
     {
-        return 'Jobs';
+        return Trans::get('navigation.jobs');
     }
 
     public static function getNavigationSort(): ?int
@@ -74,7 +75,7 @@ class ListJobs extends BaseQueueTablePage
     protected function jobInfoToArray(JobInfo $job): array
     {
         $payloadData = $job->resolvePayloadData();
-        $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? 'Unknown';
+        $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? Trans::get('jobs.unknown');
         $status = $job->reservedAt !== null ? 'processing' : 'pending';
 
         return [
@@ -98,35 +99,36 @@ class ListJobs extends BaseQueueTablePage
             ->poll($this->getTablePollingInterval())
             ->columns([
                 TextColumn::make('job')
-                    ->label('Job Class')
+                    ->label(Trans::get('jobs.job_class'))
                     ->searchable()
                     ->sortable()
                     ->wrap(),
                 TextColumn::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->badge()
                     ->sortable(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(Trans::get('common.status'))
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => Trans::status($state))
                     ->color(fn (string $state): string => $state === 'processing' ? 'info' : 'gray')
                     ->sortable(),
                 TextColumn::make('attempts')
-                    ->label('Attempts')
+                    ->label(Trans::get('common.attempts'))
                     ->sortable()
                     ->badge(),
                 TextColumn::make('createdAt')
-                    ->label('Pushed At')
+                    ->label(Trans::get('jobs.pushed_at'))
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('availableAt')
-                    ->label('Available At')
+                    ->label(Trans::get('jobs.available_at'))
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('job')
-                    ->label('Job')
+                    ->label(Trans::get('common.job'))
                     ->options(function () {
                         $driver = $this->getDriver();
                         $queues = $driver->getQueues();
@@ -136,14 +138,14 @@ class ListJobs extends BaseQueueTablePage
                         }
                         $options = [];
                         foreach ($jobs as $job) {
-                            $jobClass = $job->resolveJobClass() ?? $job->resolvePayloadData()['displayName'] ?? 'Unknown';
+                            $jobClass = $job->resolveJobClass() ?? $job->resolvePayloadData()['displayName'] ?? Trans::get('jobs.unknown');
                             $options[$jobClass] = Str::afterLast($jobClass, '\\');
                         }
                         return array_unique($options);
                     })
                     ->searchable(),
                 SelectFilter::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->options(function () {
                         $queues = $this->getDriver()->getQueues();
                         $queues = $queues instanceof Collection ? $queues : collect($queues);
@@ -152,14 +154,14 @@ class ListJobs extends BaseQueueTablePage
                     })
                     ->searchable(),
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(Trans::get('common.status'))
                     ->options([
-                        'pending' => 'Pending',
-                        'processing' => 'Processing',
+                        'pending' => Trans::get('status.pending'),
+                        'processing' => Trans::get('status.processing'),
                     ])
                     ->searchable(),
             ])
-            ->searchPlaceholder('Search jobs...')
+            ->searchPlaceholder(Trans::get('jobs.search_placeholder'))
             ->defaultSort('createdAt', 'desc')
             ->paginated([10, 25, 50]);
 

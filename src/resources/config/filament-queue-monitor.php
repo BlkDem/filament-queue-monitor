@@ -17,7 +17,7 @@ return [
 
     'navigation' => [
         'enabled' => env('QUEUE_MONITOR_NAV_ENABLED', true),
-        'group' => env('QUEUE_MONITOR_NAV_GROUP', 'Queue Monitor'),
+        'group' => env('QUEUE_MONITOR_NAV_GROUP'),
         'sort' => env('QUEUE_MONITOR_NAV_SORT', 0),
     ],
 

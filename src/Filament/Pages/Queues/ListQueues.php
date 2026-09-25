@@ -7,6 +7,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 use BlkDem\FilamentQueueMonitor\Support\Version;
 
 class ListQueues extends BaseQueueTablePage
@@ -23,7 +24,7 @@ class ListQueues extends BaseQueueTablePage
 
     public static function getNavigationLabel(): string
     {
-        return 'Queues';
+        return Trans::get('navigation.queues');
     }
 
     public static function getNavigationSort(): ?int
@@ -65,35 +66,35 @@ class ListQueues extends BaseQueueTablePage
             ->poll($this->getTablePollingInterval())
             ->columns([
                 TextColumn::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('queues.columns.queue'))
                     ->searchable()
                     ->sortable()
                     ->weight('font-medium'),
                 TextColumn::make('pending')
-                    ->label('Pending')
+                    ->label(Trans::get('queues.columns.pending'))
                     ->sortable(),
                 TextColumn::make('processing')
-                    ->label('Processing')
+                    ->label(Trans::get('queues.columns.processing'))
                     ->sortable()
                     ->color('info'),
                 TextColumn::make('delayed')
-                    ->label('Delayed')
+                    ->label(Trans::get('queues.columns.delayed'))
                     ->sortable()
                     ->color('warning'),
                 TextColumn::make('failed')
-                    ->label('Failed')
+                    ->label(Trans::get('queues.columns.failed'))
                     ->sortable()
                     ->color('danger'),
                 TextColumn::make('total')
-                    ->label('Total')
+                    ->label(Trans::get('queues.columns.total'))
                     ->sortable(),
                 TextColumn::make('lastActivityAt')
-                    ->label('Last Activity')
+                    ->label(Trans::get('queues.columns.last_activity'))
                     ->dateTime()
                     ->sortable(),
             ])
             ->recordUrl(fn ($record) => is_array($record) ? null : ViewQueue::getUrl(['queue' => $record->queue]))
-            ->searchPlaceholder('Search queues...')
+            ->searchPlaceholder(Trans::get('queues.search_placeholder'))
             ->defaultSort('queue', 'asc')
             ->paginated([10, 25, 50]);
 

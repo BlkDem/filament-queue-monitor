@@ -59,6 +59,8 @@ it('groups the dashboard tables by queue', function () {
 it('exposes the statistics period options on the job breakdown widget', function () {
     $widget = new JobBreakdownWidget();
 
+    $widget->boot();
+
     expect($widget->selectedPeriod)->toBe('today')
         ->and($widget->periods)->toMatchArray([
             'hour' => 'Last hour',
@@ -267,8 +269,8 @@ it('shows the task count in the status group header', function () {
     expect($pending)->not->toBeNull()
         ->and($processing)->not->toBeNull()
         ->and($statusGroup)->not->toBeNull()
-        ->and($statusGroup->getTitle($pending))->toBe('pending (1)')
-        ->and($statusGroup->getTitle($processing))->toBe('processing (1)');
+        ->and($statusGroup->getTitle($pending))->toBe('Pending (1)')
+        ->and($statusGroup->getTitle($processing))->toBe('Processing (1)');
 
     $ordered = $statusGroup->orderQuery(QueueJob::query(), 'asc');
 
@@ -360,8 +362,8 @@ it('adds a status filter to the queue activity table', function () {
     expect($filter)->not->toBeNull()
         ->and($filter)->toBeInstanceOf(SelectFilter::class)
         ->and($filter->getOptions())->toBe([
-            'pending' => 'pending',
-            'processing' => 'processing',
+            'pending' => 'Pending',
+            'processing' => 'Processing',
         ]);
 });
 

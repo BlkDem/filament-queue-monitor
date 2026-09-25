@@ -14,6 +14,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
 use BlkDem\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 abstract class BaseQueueTablePage extends Page implements HasTable
 {
@@ -27,9 +28,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
 
     public static function getNavigationGroup(): ?string
     {
-        $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
-
-        return is_string($group) && $group !== '' ? $group : 'Queue Monitor';
+        return Trans::navigationGroup();
     }
 
     public static function shouldRegisterNavigation(): bool

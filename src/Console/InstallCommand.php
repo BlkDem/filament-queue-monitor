@@ -32,6 +32,12 @@ class InstallCommand extends Command
             '--force' => $this->option('force'),
         ]);
 
+        $this->info('Publishing translations...');
+        $this->call('vendor:publish', [
+            '--tag' => 'filament-queue-monitor-lang',
+            '--force' => $this->option('force'),
+        ]);
+
         $this->info('Running migrations...');
         $status = $this->call('migrate', [
             '--path' => [dirname(__DIR__) . '/Database/Migrations'],

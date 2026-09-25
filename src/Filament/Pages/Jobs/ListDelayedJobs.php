@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 use BlkDem\FilamentQueueMonitor\Support\Version;
 use Carbon\Carbon;
 
@@ -30,7 +31,7 @@ class ListDelayedJobs extends BaseQueueTablePage
 
     public static function getNavigationLabel(): string
     {
-        return 'Delayed Jobs';
+        return Trans::get('navigation.delayed_jobs');
     }
 
     public static function getNavigationSort(): ?int
@@ -74,19 +75,14 @@ class ListDelayedJobs extends BaseQueueTablePage
     protected function jobInfoToArray(JobInfo $job): array
     {
         $payloadData = $job->resolvePayloadData();
-        $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? 'Unknown';
+        $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? Trans::get('jobs.unknown');
         $status = $job->reservedAt !== null ? 'processing' : 'pending';
-        
+
         $delayedMinutes = 0;
-        $delayedDisplay = '0 min';
+
         if ($job->availableAt) {
             $diffSeconds = max(0, $job->availableAt->diffInSeconds(now()));
             $delayedMinutes = (int) ceil($diffSeconds / 60);
-            if ($delayedMinutes >= 60) {
-                $delayedDisplay = (int) ceil($delayedMinutes / 60) . ' h';
-            } else {
-                $delayedDisplay = $delayedMinutes . ' min';
-            }
         }
 
         return [
@@ -99,7 +95,7 @@ class ListDelayedJobs extends BaseQueueTablePage
             'availableAt' => $job->availableAt?->toDateTimeString() ?? $job->createdAt?->toDateTimeString(),
             'isDelayed' => $job->availableAt && $job->availableAt->gt(now()),
             'status' => $status,
-            'delayedDisplay' => $delayedDisplay,
+            'delayedDisplay' => Trans::delayedFor($delayedMinutes),
             'delayedMinutes' => $delayedMinutes,
             'payload' => $job->payload,
         ];
@@ -112,39 +108,40 @@ class ListDelayedJobs extends BaseQueueTablePage
             ->poll($this->getTablePollingInterval())
             ->columns([
                 TextColumn::make('job')
-                    ->label('Job Class')
+                    ->label(Trans::get('jobs.job_class'))
                     ->searchable()
                     ->sortable()
                     ->wrap(),
                 TextColumn::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->badge()
                     ->sortable(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(Trans::get('common.status'))
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => Trans::status($state))
                     ->color(fn (string $state): string => $state === 'processing' ? 'info' : 'gray')
                     ->sortable(),
                 TextColumn::make('attempts')
-                    ->label('Attempts')
+                    ->label(Trans::get('common.attempts'))
                     ->sortable()
                     ->badge(),
                 TextColumn::make('createdAt')
-                    ->label('Pushed At')
+                    ->label(Trans::get('jobs.pushed_at'))
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('availableAt')
-                    ->label('Available At')
+                    ->label(Trans::get('jobs.available_at'))
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('delayedDisplay')
-                    ->label('Delayed For')
+                    ->label(Trans::get('jobs.delayed_for'))
                     ->sortable()
                     ->alignRight(),
             ])
             ->filters([
                 SelectFilter::make('job')
-                    ->label('Job')
+                    ->label(Trans::get('common.job'))
                     ->options(function () {
                         $driver = $this->getDriver();
                         $queues = $driver->getQueues();
@@ -154,14 +151,14 @@ class ListDelayedJobs extends BaseQueueTablePage
                         }
                         $options = [];
                         foreach ($jobs as $job) {
-                            $jobClass = $job->resolveJobClass() ?? $job->resolvePayloadData()['displayName'] ?? 'Unknown';
+                            $jobClass = $job->resolveJobClass() ?? $job->resolvePayloadData()['displayName'] ?? Trans::get('jobs.unknown');
                             $options[$jobClass] = Str::afterLast($jobClass, '\\');
                         }
                         return array_unique($options);
                     })
                     ->searchable(),
                 SelectFilter::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->options(function () {
                         $queues = $this->getDriver()->getQueues();
                         $queues = $queues instanceof Collection ? $queues : collect($queues);
@@ -170,34 +167,34 @@ class ListDelayedJobs extends BaseQueueTablePage
                     })
                     ->searchable(),
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(Trans::get('common.status'))
                     ->options([
-                        'pending' => 'Pending',
-                        'processing' => 'Processing',
+                        'pending' => Trans::get('status.pending'),
+                        'processing' => Trans::get('status.processing'),
                     ])
                     ->searchable(),
                 Filter::make('createdAt')
-                    ->label('Pushed At')
+                    ->label(Trans::get('filters.pushed_at'))
                     ->form([
                         DateTimePicker::make('from')
-                            ->label('From Pushed At')
+                            ->label(Trans::get('filters.from_pushed_at'))
                             ->native(false),
                         DateTimePicker::make('until')
-                            ->label('Until Pushed At')
+                            ->label(Trans::get('filters.until_pushed_at'))
                             ->native(false),
                     ]),
                 Filter::make('availableAt')
-                    ->label('Available At')
+                    ->label(Trans::get('filters.available_at'))
                     ->form([
                         DateTimePicker::make('from')
-                            ->label('From Available At')
+                            ->label(Trans::get('filters.from_available_at'))
                             ->native(false),
                         DateTimePicker::make('until')
-                            ->label('Until Available At')
+                            ->label(Trans::get('filters.until_available_at'))
                             ->native(false),
                     ]),
             ])
-            ->searchPlaceholder('Search jobs...')
+            ->searchPlaceholder(Trans::get('jobs.search_placeholder'))
             ->defaultSort('availableAt', 'asc')
             ->paginated([10, 25, 50]);
 
@@ -220,6 +217,10 @@ class ListDelayedJobs extends BaseQueueTablePage
 
         if ($column === 'availableAt') {
             return 'availableAt';
+        }
+
+        if ($column === 'delayedDisplay') {
+            return 'delayedMinutes';
         }
 
         return $column;

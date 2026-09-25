@@ -6,6 +6,7 @@ use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets;
 use BlkDem\FilamentQueueMonitor\Support\Access;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class Dashboard extends Page
 {
@@ -16,18 +17,21 @@ class Dashboard extends Page
 
     protected static ?string $slug = 'queue-monitor';
 
-    protected static ?string $title = 'Queue Monitor';
+    protected static ?string $title = null;
+
+    public function getTitle(): string
+    {
+        return Trans::get('dashboard.title');
+    }
 
     public function getSubheading(): string | Htmlable | null
     {
-        return 'Live view of your queues and recent job activity.';
+        return Trans::get('dashboard.subtitle');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
-
-        return is_string($group) && $group !== '' ? $group : 'Queue Monitor';
+        return Trans::navigationGroup();
     }
 
     public static function getNavigationIcon(): string | Htmlable | null
@@ -37,7 +41,7 @@ class Dashboard extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'Queue Monitor';
+        return Trans::get('navigation.label');
     }
 
     public static function getNavigationSort(): ?int

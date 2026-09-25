@@ -1,3 +1,6 @@
+@php
+    use BlkDem\FilamentQueueMonitor\Support\Trans;
+@endphp
 <div class="fqm-page-wrap">
     <style>
         .fqm-page { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
@@ -38,39 +41,39 @@
 
     <div class="fqm-header">
         <div>
-            <p class="fqm-crumb">Queue Monitor / Failed Jobs</p>
+            <p class="fqm-crumb">{{ Trans::get('failed_job_detail.breadcrumb') }}</p>
             <h1 class="fqm-title">{{ $jobName }}</h1>
         </div>
-        <a class="fqm-back" href="{{ \BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs::getUrl() }}">&larr; Back to Failed Jobs</a>
+        <a class="fqm-back" href="{{ \BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs::getUrl() }}">&larr; {{ Trans::get('failed_job_detail.back') }}</a>
     </div>
 
     <section class="fqm-card">
         <header class="fqm-card-header">
             <div>
-                <h2 class="fqm-card-title">Job information</h2>
-                <p class="fqm-card-subtitle">Details of the failed job record</p>
+                <h2 class="fqm-card-title">{{ Trans::get('failed_job_detail.job_information') }}</h2>
+                <p class="fqm-card-subtitle">{{ Trans::get('failed_job_detail.job_information_subtitle') }}</p>
             </div>
         </header>
         <dl class="fqm-grid fqm-card-body">
             <div>
-                <dt>ID</dt>
+                <dt>{{ Trans::get('common.id') }}</dt>
                 <dd>{{ $job->id }}</dd>
             </div>
             <div>
-                <dt>UUID</dt>
-                <dd>{{ $job->uuid ?? '—' }}</dd>
+                <dt>{{ Trans::get('common.uuid') }}</dt>
+                <dd>{{ $job->uuid ?? Trans::get('common.empty_value') }}</dd>
             </div>
             <div>
-                <dt>Queue</dt>
+                <dt>{{ Trans::get('failed_job_detail.queue') }}</dt>
                 <dd>{{ $job->queue }}</dd>
             </div>
             <div>
-                <dt>Connection</dt>
+                <dt>{{ Trans::get('failed_job_detail.connection') }}</dt>
                 <dd>{{ $job->connection }}</dd>
             </div>
             <div>
-                <dt>Failed At</dt>
-                <dd>{{ $job->failedAt?->format('Y-m-d H:i:s') ?? '—' }}</dd>
+                <dt>{{ Trans::get('failed_jobs.failed_at') }}</dt>
+                <dd>{{ $job->failedAt?->format('Y-m-d H:i:s') ?? Trans::get('common.empty_value') }}</dd>
             </div>
         </dl>
     </section>
@@ -78,15 +81,15 @@
     <section class="fqm-card">
         <header class="fqm-card-header">
             <div>
-                <h2 class="fqm-card-title">Payload</h2>
-                <p class="fqm-card-subtitle">Original job payload</p>
+                <h2 class="fqm-card-title">{{ Trans::get('failed_job_detail.payload') }}</h2>
+                <p class="fqm-card-subtitle">{{ Trans::get('failed_job_detail.payload_subtitle') }}</p>
             </div>
         </header>
         <div class="fqm-card-body">
             @if (filled($payloadData))
                 <pre class="fqm-codebox fqm-codebox-plain">{{ json_encode($payloadData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
             @else
-                <p class="fqm-note">No payload.</p>
+                <p class="fqm-note">{{ Trans::get('failed_job_detail.no_payload') }}</p>
             @endif
         </div>
     </section>
@@ -96,10 +99,10 @@
             <details>
                 <summary>
                     <span>
-                        <span class="fqm-card-title">Error</span>
-                        <span class="fqm-card-subtitle">Exception thrown by the job</span>
+                        <span class="fqm-card-title">{{ Trans::get('failed_job_detail.error') }}</span>
+                        <span class="fqm-card-subtitle">{{ Trans::get('failed_job_detail.error_subtitle') }}</span>
                     </span>
-                    <span class="fqm-toggle">Show error&hellip; <span class="fqm-chevron">&#9660;</span></span>
+                    <span class="fqm-toggle">{{ Trans::get('failed_job_detail.show_error') }} <span class="fqm-chevron">&#9660;</span></span>
                 </summary>
                 <div class="fqm-details-body">
                     <pre class="fqm-codebox fqm-codebox-error">{{ $job->exception }}</pre>

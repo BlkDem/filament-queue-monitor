@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\Metric;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class JobBreakdownWidget extends BaseTableWidget
 {
@@ -27,12 +28,7 @@ class JobBreakdownWidget extends BaseTableWidget
 
     public string $selectedPeriod = 'today';
 
-    public array $periods = [
-        'hour' => 'Last hour',
-        'today' => 'Today',
-        '24h' => 'Last 24 hours',
-        '7d' => 'Last 7 days',
-    ];
+    public array $periods = [];
 
     public ?string $pollingInterval = null;
 
@@ -40,6 +36,8 @@ class JobBreakdownWidget extends BaseTableWidget
 
     public function boot(): void
     {
+        $this->periods = $this->resolvePeriods();
+
         FilamentView::registerRenderHook(
             TablesRenderHook::TOOLBAR_GROUPING_SELECTOR_AFTER,
             fn (): string => view('filament-queue-monitor::widgets.partials.toolbar-controls', [
@@ -56,6 +54,16 @@ class JobBreakdownWidget extends BaseTableWidget
         $this->selectedPeriod = in_array($period, ['hour', 'today', '24h', '7d'], true)
             ? $period
             : 'today';
+    }
+
+    protected function resolvePeriods(): array
+    {
+        return [
+            'hour' => Trans::get('periods.hour'),
+            'today' => Trans::get('periods.today'),
+            '24h' => Trans::get('periods.24h'),
+            '7d' => Trans::get('periods.7d'),
+        ];
     }
 
     public function render(): View
@@ -80,7 +88,7 @@ class JobBreakdownWidget extends BaseTableWidget
         };
 
         $queueGroup = Group::make('queue')
-            ->label('Queue')
+            ->label(Trans::get('common.queue'))
             ->collapsible()
             ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
                 $value = (string) $record->queue;
@@ -89,7 +97,7 @@ class JobBreakdownWidget extends BaseTableWidget
             });
 
         $connectionGroup = Group::make('connection')
-            ->label('Connection')
+            ->label(Trans::get('common.connection'))
             ->collapsible()
             ->getTitleFromRecordUsing(function (Model $record) use ($groupCounts): string {
                 $value = (string) $record->connection;
@@ -100,12 +108,12 @@ class JobBreakdownWidget extends BaseTableWidget
         $this->collapseGroupsByDefault($table);
 
         return $table
-            ->heading('Job Breakdown')
-            ->description('Processed and failed jobs grouped by queue')
+            ->heading(Trans::get('breakdown.heading'))
+            ->description(Trans::get('breakdown.description'))
             ->query(fn (): Builder => $this->query())
             ->filters([
                 SelectFilter::make('queue')
-                    ->label('Queue')
+                    ->label(Trans::get('common.queue'))
                     ->options(fn (): array => $this->metricQueueOptions()),
             ])
             ->defaultGroup($queueGroup)
@@ -113,25 +121,25 @@ class JobBreakdownWidget extends BaseTableWidget
             ->defaultSort('processed', 'desc')
             ->columns([
                 TextColumn::make('job')
-                    ->label('Job')
+                    ->label(Trans::get('common.job'))
                     ->formatStateUsing(fn (string $state) => Str::afterLast($state, '\\'))
                     ->tooltip(fn ($record): string => (string) $record->job)
                     ->wrap(),
                 TextColumn::make('connection')
-                    ->label('Connection')
+                    ->label(Trans::get('common.connection'))
                     ->badge()
                     ->color('gray'),
                 TextColumn::make('processed')
-                    ->label('Processed')
+                    ->label(Trans::get('breakdown.processed'))
                     ->numeric()
                     ->sortable()
                     ->summarize(
                         Sum::make()
                             ->numeric()
-                            ->label('Total processed'),
+                            ->label(Trans::get('breakdown.total_processed')),
                     ),
                 TextColumn::make('failed')
-                    ->label('Failed')
+                    ->label(Trans::get('breakdown.failed'))
                     ->numeric()
                     ->sortable()
                     ->badge()
@@ -139,21 +147,32 @@ class JobBreakdownWidget extends BaseTableWidget
                     ->summarize(
                         Sum::make()
                             ->numeric()
-                            ->label('Total failed'),
+                            ->label(Trans::get('breakdown.total_failed')),
                     ),
                 TextColumn::make('avg_runtime')
-                    ->label('Avg time')
-                    ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2).'s' : '—')
+                    ->label(Trans::get('breakdown.avg_time'))
+                    ->formatStateUsing(fn ($state) => $this->formatRuntime($state))
                     ->summarize(
                         Average::make()
-                            ->label('Avg time'),
+                            ->label(Trans::get('breakdown.avg_time')),
                     ),
                 TextColumn::make('max_runtime')
-                    ->label('Max time')
-                    ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2).'s' : '—'),
+                    ->label(Trans::get('breakdown.max_time'))
+                    ->formatStateUsing(fn ($state) => $this->formatRuntime($state)),
             ])
-            ->emptyStateHeading('No job activity')
-            ->emptyStateDescription('Nothing was processed or failed for the selected period.');
+            ->emptyStateHeading(Trans::get('breakdown.empty_heading'))
+            ->emptyStateDescription(Trans::get('breakdown.empty_description'));
+    }
+
+    protected function formatRuntime(mixed $state): string
+    {
+        if ($state === null) {
+            return Trans::get('common.empty_value');
+        }
+
+        return Trans::get('breakdown.seconds', [
+            'seconds' => number_format((float) $state, 2),
+        ]);
     }
 
     protected function getPollingInterval(): ?string
