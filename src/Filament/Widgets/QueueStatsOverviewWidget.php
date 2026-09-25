@@ -65,8 +65,12 @@ class QueueStatsOverviewWidget extends BaseWidget
             $allStats['failed'] += $queueInfo->failed;
         }
 
-        // Get queue count from the same source as QueueActivityWidget (active jobs query)
-        // This ensures the queue count matches the queues shown in the activity table
+        // Get total configured queues from Laravel queue config
+        $defaultConnection = config('queue.default', 'database');
+        $queueConfig = config("queue.connections.{$defaultConnection}.queue", 'default');
+        $totalConfiguredQueues = is_array($queueConfig) ? count($queueConfig) : 1;
+
+        // Get active queues count from the same source as QueueActivityWidget
         $activeQueuesCount = QueueJob::query()
             ->where(function ($query) {
                 $query->whereNull('reserved_at')
@@ -81,7 +85,7 @@ class QueueStatsOverviewWidget extends BaseWidget
 
         return [
             Stat::make('Queues', $activeQueuesCount)
-                ->description('Active queues: ' . $activeQueuesCount)
+                ->description('Total queues: ' . $totalConfiguredQueues)
                 ->icon('heroicon-o-queue-list')
                 ->color('gray'),
             Stat::make('Pending', $allStats['pending'])

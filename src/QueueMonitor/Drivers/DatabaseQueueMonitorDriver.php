@@ -59,7 +59,9 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         }
 
         if (empty($queues)) {
-            $queues[] = $this->info(config("queue.connections.{$this->queueConnection}.queue") ?: 'default');
+            $configuredQueue = config("queue.connections.{$this->queueConnection}.queue", 'default');
+            $configuredQueue = is_array($configuredQueue) ? $configuredQueue[0] : $configuredQueue;
+            $queues[] = $this->info($configuredQueue ?: 'default');
         }
 
         return $queues;
