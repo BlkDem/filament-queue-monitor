@@ -14,6 +14,8 @@ class Dashboard extends Page
         return 'filament-queue-monitor::pages.dashboard';
     }
 
+    protected static ?string $slug = 'queue-monitor';
+
     protected static ?string $title = 'Queue Monitor';
 
     public function getSubheading(): string | Htmlable | null
@@ -54,6 +56,9 @@ class Dashboard extends Page
     {
         return [
             Widgets\QueueStatsOverviewWidget::class,
+            Widgets\DelayedJobsCountWidget::class,
+            Widgets\FailedJobsCountWidget::class,
+            Widgets\JobsProcessedLastHourWidget::class,
         ];
     }
 

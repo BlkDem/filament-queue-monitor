@@ -11,7 +11,10 @@ use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListDelayedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets\DelayedJobsCountWidget;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets\FailedJobsCountWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobsProcessedLastHourWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
 
@@ -36,6 +39,9 @@ class FilamentQueueMonitorPlugin implements Plugin
 
         $panel->widgets([
             QueueStatsOverviewWidget::class,
+            DelayedJobsCountWidget::class,
+            FailedJobsCountWidget::class,
+            JobsProcessedLastHourWidget::class,
             QueueActivityWidget::class,
             JobBreakdownWidget::class,
         ]);
