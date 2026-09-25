@@ -76,6 +76,7 @@ class ListDelayedJobs extends BaseQueueTablePage
         $payloadData = $job->resolvePayloadData();
         $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? 'Unknown';
         $status = $job->reservedAt !== null ? 'processing' : 'pending';
+        $delayedHours = $job->availableAt ? max(0, (int) ceil($job->availableAt->diffInSeconds(now()) / 3600)) : 0;
 
         return [
             'id' => (string) ($job->uuid ?? $job->id ?? ''),
@@ -87,6 +88,7 @@ class ListDelayedJobs extends BaseQueueTablePage
             'availableAt' => $job->availableAt?->toDateTimeString() ?? $job->createdAt?->toDateTimeString(),
             'isDelayed' => $job->availableAt && $job->availableAt->gt(now()),
             'status' => $status,
+            'delayedHours' => $delayedHours,
             'payload' => $job->payload,
         ];
     }
@@ -123,6 +125,11 @@ class ListDelayedJobs extends BaseQueueTablePage
                     ->label('Available At')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('delayedHours')
+                    ->label('Delayed For (hours)')
+                    ->sortable()
+                    ->alignRight()
+                    ->suffix(' h'),
             ])
             ->filters([
                 SelectFilter::make('job')
