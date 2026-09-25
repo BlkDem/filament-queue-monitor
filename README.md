@@ -60,6 +60,10 @@ return [
         'database' => env('QUEUE_MONITOR_FAILED_JOBS_DATABASE', null),
     ],
 
+    'stuck_jobs' => [
+        'threshold_hours' => env('QUEUE_MONITOR_STUCK_JOBS_THRESHOLD_HOURS', 12),
+    ],
+
     'redis' => [
         'connection' => env('QUEUE_MONITOR_REDIS_CONNECTION', null),
         'queues' => env('QUEUE_MONITOR_REDIS_QUEUES', []),
@@ -83,6 +87,7 @@ return [
 | `QUEUE_MONITOR_METRICS_REFRESH_INTERVAL` | `30` | Metrics chart refresh interval in seconds |
 | `QUEUE_MONITOR_FAILED_JOBS_TABLE` | `failed_jobs` | Failed jobs table name |
 | `QUEUE_MONITOR_FAILED_JOBS_DATABASE` | `null` | Database connection for failed jobs (null = default) |
+| `QUEUE_MONITOR_STUCK_JOBS_THRESHOLD_HOURS` | `12` | Hours after which a reserved job is considered stuck |
 | `QUEUE_MONITOR_REDIS_CONNECTION` | `null` | Redis connection name for Redis driver |
 | `QUEUE_MONITOR_REDIS_QUEUES` | `[]` | Comma-separated allowlist of Redis queue names (empty = auto-discover) |
 
@@ -120,7 +125,8 @@ QUEUE_MONITOR_REDIS_CONNECTION=default
 
 ### Dashboard
 Real-time overview with:
-- **Stats Overview**: Pending, Processing, Delayed, Failed counts per queue
+- **Stats Overview**: Queue counts (Total, Pending, Processing, Stuck Jobs)
+- **Queue Counters**: Delayed Jobs, Failed Jobs, Processed (Last Hour)
 - **Queue Activity**: Live table of active jobs grouped by queue with status badges
 - **Job Breakdown**: Metrics chart (processed, failed, throughput) with period selector (hour, today, 24h, 7d)
 - **Auto-refresh**: Configurable interval (default 10s)
@@ -142,7 +148,17 @@ Live table of pending/processing jobs with filters:
 - **Pushed At** — date/time range filter (24h picker)
 - **Available At** — date/time range filter (24h picker)
 
-Columns: Job Class, Queue, Status (Pending/Processing badge), Attempts, Pushed At, Available At, Delayed (Yes/No badge).
+Columns: Job Class, Queue, Status (Pending/Processing badge), Attempts, Pushed At, Available At.
+
+### Delayed Jobs (`/queue-monitor/delayed-jobs`)
+List of delayed jobs (available_at > now) with filters:
+- **Job** — select by job class
+- **Queue** — select by queue
+- **Status** — Pending / Processing
+- **Pushed At** — date/time range filter (24h picker)
+- **Available At** — date/time range filter (24h picker)
+
+Columns: Job Class, Queue, Status, Attempts, Pushed At, Available At, Delayed For (shows minutes when < 1 hour, hours when ≥ 1 hour).
 
 ### Failed Jobs (`/queue-monitor/failed-jobs`)
 List of failed jobs with filters:
