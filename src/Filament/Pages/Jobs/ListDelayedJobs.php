@@ -20,7 +20,7 @@ class ListDelayedJobs extends BaseQueueTablePage
 {
     public function getView(): string
     {
-        return 'filament-queue-monitor::pages.list-jobs';
+        return 'filament-queue-monitor::pages.list-delayed-jobs';
     }
 
     public static function getNavigationIcon(): string | Htmlable | null
@@ -123,12 +123,6 @@ class ListDelayedJobs extends BaseQueueTablePage
                     ->label('Available At')
                     ->dateTime()
                     ->sortable(),
-                TextColumn::make('isDelayed')
-                    ->label('Delayed')
-                    ->badge()
-                    ->color('warning')
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'Yes' : 'No')
-                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('job')
@@ -162,13 +156,6 @@ class ListDelayedJobs extends BaseQueueTablePage
                     ->options([
                         'pending' => 'Pending',
                         'processing' => 'Processing',
-                    ])
-                    ->searchable(),
-                SelectFilter::make('isDelayed')
-                    ->label('Delayed')
-                    ->options([
-                        true => 'Yes',
-                        false => 'No',
                     ])
                     ->searchable(),
                 Filter::make('createdAt')

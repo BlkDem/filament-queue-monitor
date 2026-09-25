@@ -123,12 +123,6 @@ class ListJobs extends BaseQueueTablePage
                     ->label('Available At')
                     ->dateTime()
                     ->sortable(),
-                TextColumn::make('isDelayed')
-                    ->label('Delayed')
-                    ->badge()
-                    ->color('warning')
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'Yes' : 'No')
-                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('job')
@@ -164,33 +158,6 @@ class ListJobs extends BaseQueueTablePage
                         'processing' => 'Processing',
                     ])
                     ->searchable(),
-                SelectFilter::make('isDelayed')
-                    ->label('Delayed')
-                    ->options([
-                        true => 'Yes',
-                        false => 'No',
-                    ])
-                    ->searchable(),
-                Filter::make('createdAt')
-                    ->label('Pushed At')
-                    ->form([
-                        DateTimePicker::make('from')
-                            ->label('From')
-                            ->native(false),
-                        DateTimePicker::make('until')
-                            ->label('Until')
-                            ->native(false),
-                    ]),
-                Filter::make('availableAt')
-                    ->label('Available At')
-                    ->form([
-                        DateTimePicker::make('from')
-                            ->label('From')
-                            ->native(false),
-                        DateTimePicker::make('until')
-                            ->label('Until')
-                            ->native(false),
-                    ]),
             ])
             ->searchPlaceholder('Search jobs...')
             ->defaultSort('createdAt', 'desc')
