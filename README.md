@@ -185,16 +185,6 @@ Metrics are automatically collected via Laravel queue events:
 - `JobFailed` — increments failed count
 - `JobExceptionOccurred` — records exception
 
-## Testing
-
-```bash
-# Run package tests
-vendor/bin/pest
-
-# Run e2e tests (requires running Filament app)
-cd /path/to/e2e-app && php artisan test
-```
-
 ## License
 
 MIT License
