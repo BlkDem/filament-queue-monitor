@@ -76,7 +76,18 @@ class ListDelayedJobs extends BaseQueueTablePage
         $payloadData = $job->resolvePayloadData();
         $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? 'Unknown';
         $status = $job->reservedAt !== null ? 'processing' : 'pending';
-        $delayedHours = $job->availableAt ? max(0, (int) ceil($job->availableAt->diffInSeconds(now()) / 3600)) : 0;
+        
+        $delayedMinutes = 0;
+        $delayedDisplay = '0 min';
+        if ($job->availableAt) {
+            $diffSeconds = max(0, $job->availableAt->diffInSeconds(now()));
+            $delayedMinutes = (int) ceil($diffSeconds / 60);
+            if ($delayedMinutes >= 60) {
+                $delayedDisplay = (int) ceil($delayedMinutes / 60) . ' h';
+            } else {
+                $delayedDisplay = $delayedMinutes . ' min';
+            }
+        }
 
         return [
             'id' => (string) ($job->uuid ?? $job->id ?? ''),
@@ -88,7 +99,8 @@ class ListDelayedJobs extends BaseQueueTablePage
             'availableAt' => $job->availableAt?->toDateTimeString() ?? $job->createdAt?->toDateTimeString(),
             'isDelayed' => $job->availableAt && $job->availableAt->gt(now()),
             'status' => $status,
-            'delayedHours' => $delayedHours,
+            'delayedDisplay' => $delayedDisplay,
+            'delayedMinutes' => $delayedMinutes,
             'payload' => $job->payload,
         ];
     }
@@ -125,11 +137,10 @@ class ListDelayedJobs extends BaseQueueTablePage
                     ->label('Available At')
                     ->dateTime()
                     ->sortable(),
-                TextColumn::make('delayedHours')
-                    ->label('Delayed For (hours)')
+                TextColumn::make('delayedDisplay')
+                    ->label('Delayed For')
                     ->sortable()
-                    ->alignRight()
-                    ->suffix(' h'),
+                    ->alignRight(),
             ])
             ->filters([
                 SelectFilter::make('job')
