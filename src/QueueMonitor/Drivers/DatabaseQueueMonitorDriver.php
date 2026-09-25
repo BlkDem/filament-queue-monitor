@@ -155,6 +155,18 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         return $this->rowsToJobInfo($rows);
     }
 
+    public function delayedJobs(string $queue): iterable
+    {
+        $rows = $this->database->table($this->table)
+            ->where('queue', $queue)
+            ->whereNull('reserved_at')
+            ->where('available_at', '>', now()->timestamp)
+            ->orderBy('available_at', 'asc')
+            ->get();
+
+        return $this->rowsToJobInfo($rows);
+    }
+
     public function failedJobs(): iterable
     {
         $failer = $this->getFailer();

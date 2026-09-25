@@ -19,6 +19,8 @@ interface QueueMonitorDriver
 
     public function processingJobs(string $queue): iterable;
 
+    public function delayedJobs(string $queue): iterable;
+
     public function failedJobs(): iterable;
 
     public function findFailedJob(string $id): ?FailedJobInfo;

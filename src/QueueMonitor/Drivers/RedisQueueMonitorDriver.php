@@ -107,6 +107,30 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         return $jobs;
     }
 
+    public function delayedJobs(string $queue): array
+    {
+        $entries = $this->redis()->zrange($this->getQueueKey($queue).':delayed', 0, -1, true);
+        $jobs = [];
+
+        foreach ($this->scoredEntries($entries) as [$payload, $score]) {
+            $job = $this->parseJob($payload, $queue);
+
+            $jobs[] = new JobInfo(
+                id: $job->id,
+                uuid: $job->uuid,
+                queue: $job->queue,
+                job: $job->job,
+                attempts: $job->attempts,
+                createdAt: $job->createdAt,
+                availableAt: $this->timestampToCarbon($score),
+                reservedAt: null,
+                payload: $job->payload,
+            );
+        }
+
+        return $jobs;
+    }
+
     public function info(string $queue): QueueInfo
     {
         $stats = $this->stats($queue);

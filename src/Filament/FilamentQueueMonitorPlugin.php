@@ -7,6 +7,7 @@ use Filament\Panel;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListDelayedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
@@ -28,6 +29,7 @@ class FilamentQueueMonitorPlugin implements Plugin
             ListQueues::class,
             ViewQueue::class,
             ListJobs::class,
+            ListDelayedJobs::class,
             ListFailedJobs::class,
             ViewFailedJob::class,
         ]);
