@@ -5,6 +5,7 @@ namespace BlkDem\FilamentQueueMonitor\Filament\Widgets;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
 
 class QueueStatsOverviewWidget extends BaseWidget
 {
@@ -64,12 +65,23 @@ class QueueStatsOverviewWidget extends BaseWidget
             $allStats['failed'] += $queueInfo->failed;
         }
 
+        // Get queue count from the same source as QueueActivityWidget (active jobs query)
+        // This ensures the queue count matches the queues shown in the activity table
+        $activeQueuesCount = QueueJob::query()
+            ->where(function ($query) {
+                $query->whereNull('reserved_at')
+                    ->where('available_at', '<=', now()->timestamp)
+                    ->orWhereNotNull('reserved_at');
+            })
+            ->distinct('queue')
+            ->count('queue');
+
         $thresholdHours = config('filament-queue-monitor.stuck_jobs.threshold_hours', 12);
         $stuckCount = $driver->stuckJobsCount($thresholdHours);
 
         return [
             Stat::make('Queues', $allStats['queues'])
-                ->description('Total queues')
+                ->description('Total queues: ' . $activeQueuesCount . ' active')
                 ->icon('heroicon-o-queue-list')
                 ->color('gray'),
             Stat::make('Pending', $allStats['pending'])
