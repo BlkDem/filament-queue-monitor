@@ -5,12 +5,14 @@ namespace BlkDem\FilamentQueueMonitor\Filament\Widgets;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use Carbon\Carbon;
 
-class FailedJobsCountWidget extends BaseWidget
+class QueueCountersWidget extends BaseWidget
 {
     protected static bool $isLazy = false;
 
-    protected int | string | array $columnSpan = 1;
+    protected int | string | array $columnSpan = 'full';
 
     protected $listeners = ['queueActivityPollingIntervalChanged' => 'setPollingInterval'];
 
@@ -19,6 +21,11 @@ class FailedJobsCountWidget extends BaseWidget
     public function setPollingInterval(string $interval): void
     {
         $this->pollingOverride = $interval;
+    }
+
+    public function getColumns(): int
+    {
+        return 3;
     }
 
     protected function getPollingInterval(): ?string
@@ -45,30 +52,33 @@ class FailedJobsCountWidget extends BaseWidget
         $driver = app(QueueMonitorManager::class)->driver();
         $queues = $driver->getQueues();
 
+        $totalDelayed = 0;
         $totalFailed = 0;
         foreach ($queues as $queueInfo) {
+            $totalDelayed += $queueInfo->delayed;
             $totalFailed += $queueInfo->failed;
         }
 
+        $metricsStorage = app(MetricsStorage::class);
+        $stats = $metricsStorage->getAggregatedStats('hour');
+        $totalProcessed = $stats['processed'];
+
         return [
+            Stat::make('Delayed Jobs', $totalDelayed)
+                ->description('Jobs waiting to be processed')
+                ->descriptionIcon('heroicon-o-clock')
+                ->color('warning')
+                ->chart([$totalDelayed]),
             Stat::make('Failed Jobs', $totalFailed)
                 ->description('Jobs that have failed')
                 ->descriptionIcon('heroicon-o-exclamation-triangle')
                 ->color('danger')
-                ->chart($this->getChartData()),
+                ->chart([$totalFailed]),
+            Stat::make('Processed (Last Hour)', $totalProcessed)
+                ->description('Jobs completed in the last hour')
+                ->descriptionIcon('heroicon-o-check-circle')
+                ->color('success')
+                ->chart([$totalProcessed]),
         ];
-    }
-
-    protected function getChartData(): array
-    {
-        $driver = app(QueueMonitorManager::class)->driver();
-        $queues = $driver->getQueues();
-
-        $data = [];
-        for ($i = 59; $i >= 0; $i--) {
-            $data[] = 0;
-        }
-
-        return $data;
     }
 }

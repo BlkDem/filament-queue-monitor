@@ -56,9 +56,7 @@ class Dashboard extends Page
     {
         return [
             Widgets\QueueStatsOverviewWidget::class,
-            Widgets\DelayedJobsCountWidget::class,
-            Widgets\FailedJobsCountWidget::class,
-            Widgets\JobsProcessedLastHourWidget::class,
+            Widgets\QueueCountersWidget::class,
         ];
     }
 
