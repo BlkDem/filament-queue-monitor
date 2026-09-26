@@ -100,11 +100,36 @@ it('renders the failed job detail view in russian', function () {
         ->and($html)->not->toContain('Job information');
 });
 
-it('wraps the failed job detail content in the filament page shell', function () {
-    $html = file_get_contents(__DIR__ . '/../../src/resources/views/pages/view-failed-job.blade.php');
+it('renders every completed jobs page through the same shell', function () {
+    // Strip blade comments: the shell documents the removed v2 classes by name.
+    $markup = fn (string $path): string => (string) preg_replace(
+        '/\{\{--.*?--\}\}/s',
+        '',
+        file_get_contents($path)
+    );
 
-    expect($html)->toContain('class="fi-page"')
-        ->toContain('flex flex-col gap-y-8 py-8');
+    $shell = __DIR__ . '/../../src/resources/views/pages/partials/page-shell.blade.php';
+
+    expect($markup($shell))
+        ->toContain('flex flex-col gap-y-8 py-8')
+        ->toContain('fi-header flex flex-col gap-4')
+        ->not->toContain('fi-page-main')
+        ->not->toContain('fi-page-content')
+        ->not->toContain('fi-page-header-main-ctn');
+
+    // Each page delegates to the shell instead of repeating its own markup.
+    foreach ([
+        'list-completed-jobs',
+        'view-completed-job',
+        'list-completed-job-runs',
+    ] as $page) {
+        $contents = $markup(__DIR__ . "/../../src/resources/views/pages/{$page}.blade.php");
+
+        expect($contents)->toContain('pages.partials.page-shell')
+            ->not->toContain('fi-page-main')
+            ->not->toContain('fi-page-content')
+            ->not->toContain('gap-y-8 py-8');
+    }
 });
 
 it('renders the queue details view in russian', function () {
