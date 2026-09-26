@@ -18,3 +18,9 @@
 *.log
 .DS_Store
 Thumbs.db
+
+# Agent tooling: keep the config, never the worktrees.
+# A worktree is a live checkout with its own .git pointer; committing it
+# records a submodule-style gitlink that breaks for everyone who clones.
+.blkdem/worktrees/
+
