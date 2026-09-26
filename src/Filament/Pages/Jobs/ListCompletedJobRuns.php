@@ -95,10 +95,12 @@ class ListCompletedJobRuns extends Page implements HasTable
                 TextColumn::make('uuid')
                     ->label(Trans::get('completed_jobs.uuid'))
                     ->searchable()
-                    ->copyable()
                     ->placeholder(Trans::get('common.empty_value'))
                     ->wrap()
                     ->color('primary')
+                    // Deliberately not ->copyable(): it wraps the value in a
+                    // span with click.prevent.stop, which cancels the link and
+                    // the run page is never reached.
                     ->url(fn ($record): string => ViewCompletedJobRun::getUrl([
                         'job' => ViewCompletedJob::encodeJob($this->job),
                         'minute' => ListCompletedJobRuns::encodeMinute((string) $record->finished_at),

@@ -333,7 +333,13 @@ it('links each run id on the runs list to the run page', function () {
 
     expect($column->getUrl())->toContain('/runs/202609260610/42')
         ->toContain('App~Jobs~SendMail');
+
+    // ->copyable() on a linked column renders the value inside a span with
+    // x-on:click.prevent.stop, which cancels the anchor and the run page is
+    // never reached. The two cannot share a column.
+    expect($column->isCopyable("copy"))->toBeFalse();
 });
+
 
 it('translates the runs page', function () {
     App::setLocale('ru');
