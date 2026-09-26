@@ -5,10 +5,10 @@ namespace BlkDem\FilamentQueueMonitor\QueueMonitor\DTO;
 class JobInfo
 {
     public function __construct(
-        public readonly string|int|null $id = null,
-        public readonly string|int|null $uuid = null,
         public readonly string $queue,
         public readonly string $job,
+        public readonly string|int|null $id = null,
+        public readonly string|int|null $uuid = null,
         public readonly int $attempts = 0,
         public readonly ?\Illuminate\Support\Carbon $createdAt = null,
         public readonly ?\Illuminate\Support\Carbon $availableAt = null,

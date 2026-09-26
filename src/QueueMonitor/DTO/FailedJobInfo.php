@@ -5,10 +5,10 @@ namespace BlkDem\FilamentQueueMonitor\QueueMonitor\DTO;
 class FailedJobInfo
 {
     public function __construct(
-        public readonly string|int|null $id = null,
-        public readonly ?string $uuid = null,
         public readonly string $connection,
         public readonly string $queue,
+        public readonly string|int|null $id = null,
+        public readonly ?string $uuid = null,
         public readonly string $payload = '',
         public readonly string $exception = '',
         public readonly ?\Illuminate\Support\Carbon $failedAt = null,
