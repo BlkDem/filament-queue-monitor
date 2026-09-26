@@ -65,8 +65,13 @@ class QueueJob extends Model
 
     protected function resolveQueueConnection(): string
     {
-        return config("queue.connections.{$this->resolveQueueConnectionName()}.connection")
-            ?? config('database.default');
+        $connection = config("queue.connections.{$this->resolveQueueConnectionName()}.connection");
+
+        if (is_string($connection) && array_key_exists($connection, config('database.connections', []))) {
+            return $connection;
+        }
+
+        return (string) config('database.default');
     }
 
     protected function resolveQueueConnectionName(): string
@@ -77,11 +82,15 @@ class QueueJob extends Model
             $queueConnection = 'database';
         }
 
+        // This model mirrors the database `jobs` table, so it only applies when
+        // the monitored driver and the queue connection both read that table.
+        // A redis queue connection has no `jobs` table and its `connection`
+        // value names a redis connection, not a database one.
         if (
-            config('filament-queue-monitor.driver') === 'database'
-            && config("queue.connections.{$queueConnection}.driver") === 'redis'
+            config('filament-queue-monitor.driver') === 'redis'
+            || config("queue.connections.{$queueConnection}.driver") === 'redis'
         ) {
-            $queueConnection = 'database';
+            return 'database';
         }
 
         return $queueConnection;

@@ -52,6 +52,8 @@ class QueueStatsOverviewWidget extends BaseWidget
         $manager = app(QueueMonitorManager::class);
         $driver = $manager->driver();
 
+        $driverQueues = $driver->getQueues();
+
         $allStats = [
             'queues' => 0,
             'pending' => 0,
@@ -59,7 +61,7 @@ class QueueStatsOverviewWidget extends BaseWidget
             'failed' => 0,
         ];
 
-        foreach ($driver->getQueues() as $queueInfo) {
+        foreach ($driverQueues as $queueInfo) {
             $allStats['queues']++;
             $allStats['pending'] += $queueInfo->pending;
             $allStats['processing'] += $queueInfo->processing;
@@ -71,15 +73,34 @@ class QueueStatsOverviewWidget extends BaseWidget
         $queueConfig = config("queue.connections.{$defaultConnection}.queue", 'default');
         $totalConfiguredQueues = is_array($queueConfig) ? count($queueConfig) : 1;
 
-        // Get active queues count from the same source as QueueActivityWidget
-        $activeQueuesCount = QueueJob::query()
-            ->where(function ($query) {
-                $query->whereNull('reserved_at')
-                    ->where('available_at', '<=', now()->timestamp)
-                    ->orWhereNotNull('reserved_at');
-            })
-            ->distinct('queue')
-            ->count('queue');
+        // A redis queue connection declares a single queue name, which says
+        // nothing about how many are in use. Fall back to the allowlist when
+        // it is set, otherwise report what the driver actually found.
+        if (config('filament-queue-monitor.driver') === 'redis') {
+            $allowlist = config('filament-queue-monitor.redis.queues', []);
+
+            if (is_string($allowlist)) {
+                $allowlist = array_filter(array_map('trim', explode(',', $allowlist)));
+            }
+
+            $totalConfiguredQueues = count($allowlist) > 0
+                ? count($allowlist)
+                : $allStats['queues'];
+        }
+
+        // Active queues come from the driver being monitored, so the stat
+        // agrees with the per-queue tables below it. The database driver keeps
+        // using the same source as QueueActivityWidget.
+        $activeQueuesCount = config('filament-queue-monitor.driver') === 'redis'
+            ? $allStats['queues']
+            : QueueJob::query()
+                ->where(function ($query) {
+                    $query->whereNull('reserved_at')
+                        ->where('available_at', '<=', now()->timestamp)
+                        ->orWhereNotNull('reserved_at');
+                })
+                ->distinct('queue')
+                ->count('queue');
 
         $thresholdHours = config('filament-queue-monitor.stuck_jobs.threshold_hours', 12);
         $stuckCount = $driver->stuckJobsCount($thresholdHours);
