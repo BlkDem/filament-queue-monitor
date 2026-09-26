@@ -15,6 +15,7 @@ use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueCountersWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class FilamentQueueMonitorPlugin implements Plugin
 {
@@ -43,9 +44,8 @@ class FilamentQueueMonitorPlugin implements Plugin
         ]);
 
         if ((bool) config('filament-queue-monitor.navigation.enabled', true)) {
-            $group = config('filament-queue-monitor.navigation.group', 'Queue Monitor');
             $panel->navigationGroups([
-                is_string($group) && $group !== '' ? $group : 'Queue Monitor',
+                Trans::navigationGroup(),
             ]);
         }
     }
