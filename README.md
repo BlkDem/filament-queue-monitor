@@ -85,8 +85,8 @@ return [
 | `QUEUE_MONITOR_METRICS_TABLE` | `queue_monitor_metrics` | Database table for metrics |
 | `QUEUE_MONITOR_METRICS_RETENTION_DAYS` | `30` | Days to retain metrics |
 | `QUEUE_MONITOR_METRICS_REFRESH_INTERVAL` | `30` | Metrics chart refresh interval in seconds |
-| `QUEUE_MONITOR_FAILED_JOBS_TABLE` | `failed_jobs` | Failed jobs table name |
-| `QUEUE_MONITOR_FAILED_JOBS_DATABASE` | `null` | Database connection for failed jobs (null = default) |
+| `QUEUE_MONITOR_FAILED_JOBS_TABLE` | `failed_jobs` | Unused. Failed jobs are read through Laravel's failer, see [Which storage backs each number](#which-storage-backs-each-number) |
+| `QUEUE_MONITOR_FAILED_JOBS_DATABASE` | `null` | Unused, same as above |
 | `QUEUE_MONITOR_STUCK_JOBS_THRESHOLD_HOURS` | `12` | Hours after which a reserved job is considered stuck |
 | `QUEUE_MONITOR_REDIS_CONNECTION` | `null` | Redis connection name for Redis driver |
 | `QUEUE_MONITOR_REDIS_QUEUES` | `[]` | Comma-separated allowlist of Redis queue names (empty = auto-discover) |
@@ -200,6 +200,32 @@ Metrics are automatically collected via Laravel queue events:
 - `JobProcessed` — increments processed count, records duration
 - `JobFailed` — increments failed count
 - `JobExceptionOccurred` — records exception
+
+### Which storage backs each number
+
+The `driver` setting only decides where **live queue state** is read from. Some
+numbers cannot come from there, because the queue backend keeps no record of
+them once a job is gone.
+
+| Dashboard number | Read from |
+|---|---|
+| Queues, Pending, Processing, Delayed, Stuck | the driver — Redis keys or the `jobs` table |
+| Failed Jobs | your app's queue failer, `config('queue.failed')` |
+| Processed (last hour), Job Breakdown | `queue_monitor_metrics` |
+
+Concretely, on the Redis driver the package reads:
+
+- `queue_monitor_metrics` — the only table the package creates and owns
+- the failer's storage — `failed_jobs` with the default `database-uuids` driver
+
+It does **not** read the `jobs` table on the redis driver, and it never creates
+`failed_jobs`: that table belongs to Laravel and is configured by your app. The
+`filament-queue-monitor.failed_jobs.*` config keys are unused, since failed jobs
+are always read through `queue.failer`.
+
+Failed jobs are never stored in the queue backend, and completed jobs are
+deleted from it, so neither can be counted there. Point `QUEUE_FAILED_DRIVER`
+at `file` or `null` if you would rather not keep a `failed_jobs` table at all.
 
 ## Translations
 
