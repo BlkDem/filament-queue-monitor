@@ -6,6 +6,7 @@ use Filament\Panel;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Builder;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
@@ -715,7 +716,7 @@ it('links the failed job name to the job detail page', function () {
 
     $uuid = insertSmokeFailedJob('default', 'App\\Jobs\\SomeJob', 'exc');
 
-    bindTestFilamentManager([ListFailedJobs::class, ViewFailedJob::class]);
+    bindTestFilamentManager([Dashboard::class, ListFailedJobs::class, ViewFailedJob::class]);
 
     $page = new ListFailedJobs();
     $page->bootedInteractsWithTable();
@@ -744,7 +745,7 @@ it('renders the failed job detail view with payload and collapsible exception', 
         extraPayload: '{"orderId":1234}',
     );
 
-    bindTestFilamentManager([ListFailedJobs::class, ViewFailedJob::class]);
+    bindTestFilamentManager([Dashboard::class, ListFailedJobs::class, ViewFailedJob::class]);
 
     $page = new ViewFailedJob();
     $page->mount($uuid);

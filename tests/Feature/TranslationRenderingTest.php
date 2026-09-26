@@ -90,7 +90,7 @@ it('renders the failed job detail view in russian', function () {
         'payloadData' => ['displayName' => 'App\\Jobs\\SendMail'],
     ])->render();
 
-    expect($html)->toContain('Монитор очередей / Неудачные задания')
+    expect($html)->toContain('fi-header-heading')
         ->toContain('Информация о задании')
         ->toContain('Данные записи неудачного задания')
         ->toContain('Время ошибки')
@@ -101,33 +101,46 @@ it('renders the failed job detail view in russian', function () {
 });
 
 it('renders every completed jobs page through the same shell', function () {
-    // Strip blade comments: the shell documents the removed v2 classes by name.
+    // Strip blade comments: the shell documents the layout it mirrors.
     $markup = fn (string $path): string => (string) preg_replace(
         '/\{\{--.*?--\}\}/s',
         '',
         file_get_contents($path)
     );
 
-    $shell = __DIR__ . '/../../src/resources/views/pages/partials/page-shell.blade.php';
+    $shell = $markup(__DIR__ . '/../../src/resources/views/pages/partials/page-shell.blade.php');
 
-    expect($markup($shell))
-        ->toContain('flex flex-col gap-y-8 py-8')
-        ->toContain('fi-header flex flex-col gap-4')
-        ->not->toContain('fi-page-main')
-        ->not->toContain('fi-page-content')
-        ->not->toContain('fi-page-header-main-ctn');
+    // These are filament 3 classes with real styles in the compiled theme:
+    // fi-page-header-main-ctn carries the block padding, fi-page-main the gap
+    // between header and content. Do not replace them with hand-rolled
+    // utilities, the spacing stops matching the rest of the panel.
+    expect($shell)
+        ->toContain('fi-page')
+        ->toContain('fi-page-header-main-ctn')
+        ->toContain('fi-page-main')
+        ->toContain('fi-page-content')
+        ->toContain('fi-header')
+        ->toContain('fi-header-heading')
+        ->not->toContain('gap-y-8 py-8');
 
-    // Each page delegates to the shell instead of repeating its own markup.
     foreach ([
         'list-completed-jobs',
         'view-completed-job',
         'list-completed-job-runs',
+        'view-failed-job',
     ] as $page) {
         $contents = $markup(__DIR__ . "/../../src/resources/views/pages/{$page}.blade.php");
 
+        if ($page === 'view-failed-job') {
+            expect($contents)->toContain('fi-page-header-main-ctn')
+                ->toContain('fi-page-main')
+                ->toContain('fi-page-content');
+
+            continue;
+        }
+
         expect($contents)->toContain('pages.partials.page-shell')
             ->not->toContain('fi-page-main')
-            ->not->toContain('fi-page-content')
             ->not->toContain('gap-y-8 py-8');
     }
 });

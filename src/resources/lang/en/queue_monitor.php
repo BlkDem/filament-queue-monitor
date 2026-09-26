@@ -126,7 +126,6 @@ return [
     ],
 
     'failed_job_detail' => [
-        'breadcrumb' => 'Queue Monitor / Failed Jobs',
         'back' => 'Back to Failed Jobs',
         'job_information' => 'Job information',
         'job_information_subtitle' => 'Details of the failed job record',

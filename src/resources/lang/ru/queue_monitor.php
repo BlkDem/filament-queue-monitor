@@ -126,7 +126,6 @@ return [
     ],
 
     'failed_job_detail' => [
-        'breadcrumb' => 'Монитор очередей / Неудачные задания',
         'back' => 'Назад к неудачным заданиям',
         'job_information' => 'Информация о задании',
         'job_information_subtitle' => 'Данные записи неудачного задания',
