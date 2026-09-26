@@ -61,21 +61,58 @@ trait HandlesFailedJobs
         return is_string($encoded) ? $encoded : $payload;
     }
 
-    protected function countFailedJobsForQueue(string $queue): int
+    public function failedJobsCount(?string $connection = null): int
     {
         try {
             $failer = $this->getFailer();
+            $connection ??= $this->monitoredQueueConnection();
 
             if (method_exists($failer, 'count')) {
-                return (int) $failer->count(null, $queue);
+                return (int) $failer->count($connection);
+            }
+
+            return count(array_filter(
+                $failer->all() ?? [],
+                fn ($job): bool => $this->failedJobValue($job, 'connection', '') === $connection,
+            ));
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
+
+    protected function countFailedJobsForQueue(string $queue, ?string $connection = null): int
+    {
+        try {
+            $failer = $this->getFailer();
+            $connection ??= $this->monitoredQueueConnection();
+
+            if (method_exists($failer, 'count')) {
+                return (int) $failer->count($connection, $queue);
             }
 
             $all = $failer->all() ?? [];
 
-            return count(array_filter($all, fn ($job): bool => $this->failedJobValue($job, 'queue', '') === $queue));
+            return count(array_filter(
+                $all,
+                fn ($job): bool => $this->failedJobValue($job, 'connection', '') === $connection
+                    && $this->failedJobValue($job, 'queue', '') === $queue,
+            ));
         } catch (\Throwable) {
             return 0;
         }
+    }
+
+    /**
+     * The queue connection this driver reports on. Failed jobs are recorded per
+     * connection, so an app that has switched connections keeps the previous
+     * connection's failures in the same table; scoping keeps them out of the
+     * totals and out of the per-queue columns.
+     */
+    protected function monitoredQueueConnection(): string
+    {
+        $connection = config('queue.default', 'database');
+
+        return is_string($connection) && $connection !== '' ? $connection : 'database';
     }
 
     protected function failedStringValue(object|array $record, string $property, string $default = ''): string

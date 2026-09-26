@@ -114,7 +114,7 @@ class MetricsStorage
         return $query->orderBy('period', 'desc')->get()->all();
     }
 
-    public function getAggregatedStats(string $period = 'today'): array
+    public function getAggregatedStats(string $period = 'today', ?string $connection = null): array
     {
         if (! $this->isPackageEnabled() || ! $this->isEnabled() || ! $this->tableExists()) {
             return [
@@ -124,6 +124,10 @@ class MetricsStorage
         }
 
         $query = DB::table($this->table);
+
+        if ($connection !== null && $connection !== '') {
+            $query->where('connection', $connection);
+        }
 
         $this->applyPeriodFilter($query, $this->normalizePeriod($period));
 

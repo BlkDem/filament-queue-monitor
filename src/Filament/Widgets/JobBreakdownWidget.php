@@ -237,10 +237,23 @@ class JobBreakdownWidget extends BaseTableWidget
             ->selectRaw('SUM(failed) as failed')
             ->selectRaw('AVG(avg_runtime) as avg_runtime')
             ->selectRaw('MAX(max_runtime) as max_runtime')
+            ->where('connection', $this->currentConnection())
             ->where('period', '>=', $this->periodStart())
             ->groupBy(['connection', 'queue', 'job']);
 
         return $builder;
+    }
+
+    /**
+     * Metrics are recorded per queue connection, so the breakdown is scoped to
+     * the connection currently in use. Without this, an app that has switched
+     * connections keeps summing the old connection's history into every total.
+     */
+    protected function currentConnection(): string
+    {
+        $connection = config('queue.default', 'database');
+
+        return is_string($connection) && $connection !== '' ? $connection : 'database';
     }
 
     protected function periodStart(): string

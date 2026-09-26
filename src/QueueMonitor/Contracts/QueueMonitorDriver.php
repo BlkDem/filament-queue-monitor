@@ -23,6 +23,8 @@ interface QueueMonitorDriver
 
     public function failedJobs(): iterable;
 
+    public function failedJobsCount(?string $connection = null): int;
+
     public function stuckJobsCount(int $thresholdHours): int;
 
     public function findFailedJob(string $id): ?FailedJobInfo;

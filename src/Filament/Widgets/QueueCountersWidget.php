@@ -48,20 +48,33 @@ class QueueCountersWidget extends BaseWidget
         return "{$interval}s";
     }
 
+    protected function currentConnection(): string
+    {
+        $connection = config('queue.default', 'database');
+
+        return is_string($connection) && $connection !== '' ? $connection : 'database';
+    }
+
     protected function getStats(): array
     {
         $driver = app(QueueMonitorManager::class)->driver();
         $queues = $driver->getQueues();
 
         $totalDelayed = 0;
-        $totalFailed = 0;
         foreach ($queues as $queueInfo) {
             $totalDelayed += $queueInfo->delayed;
-            $totalFailed += $queueInfo->failed;
         }
 
+        // Counted from the failer, not summed over the queues we happened to
+        // discover: failed jobs are never removed from the queue, so a queue
+        // with no pending work left still owns its failed jobs and would
+        // otherwise disappear from the total.
+        $totalFailed = $driver->failedJobsCount();
+
+        // Scoped to the connection in use so the figure does not absorb history
+        // from a previous queue connection.
         $metricsStorage = app(MetricsStorage::class);
-        $stats = $metricsStorage->getAggregatedStats('hour');
+        $stats = $metricsStorage->getAggregatedStats('hour', $this->currentConnection());
         $totalProcessed = $stats['processed'];
 
         return [

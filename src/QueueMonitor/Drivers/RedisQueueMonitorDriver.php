@@ -33,15 +33,7 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
 
     public function getQueues(): array
     {
-        $names = [];
-
-        foreach ($this->configuredQueues() as $queue) {
-            $names[$queue] = true;
-        }
-
-        foreach ($this->scanQueueKeys() as $queue) {
-            $names[$queue] = true;
-        }
+        $names = $this->knownQueues();
 
         if ($names === []) {
             return [];
@@ -49,7 +41,7 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
 
         return array_values(array_map(
             fn (string $queue): QueueInfo => $this->info($queue),
-            array_keys($names),
+            $names,
         ));
     }
 
@@ -199,7 +191,7 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         $threshold = now()->subHours($thresholdHours)->timestamp;
         $count = 0;
 
-        foreach ($this->configuredQueues() as $queue) {
+        foreach ($this->knownQueues() as $queue) {
             $key = $this->getQueueKey($queue) . ':reserved';
             $count += $this->redis()->zcount($key, 0, $threshold);
         }
@@ -276,6 +268,27 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
             (array) $queues,
             fn (mixed $queue): bool => is_string($queue) && $queue !== '',
         )));
+    }
+
+    /**
+     * Explicitly configured queues plus any discovered from redis, so that
+     * every reader (stats, stuck jobs) sees the same set as getQueues().
+     *
+     * @return list<string>
+     */
+    protected function knownQueues(): array
+    {
+        $names = [];
+
+        foreach ($this->configuredQueues() as $queue) {
+            $names[$queue] = true;
+        }
+
+        foreach ($this->scanQueueKeys() as $queue) {
+            $names[$queue] = true;
+        }
+
+        return array_keys($names);
     }
 
     protected function scanQueueKeys(): array
