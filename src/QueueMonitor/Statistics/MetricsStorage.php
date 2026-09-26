@@ -46,6 +46,22 @@ class MetricsStorage
         return $this->table;
     }
 
+    /**
+     * Inclusive lower bound of a reporting window, so a period means the same
+     * thing to the counters, the breakdown and the completed jobs page.
+     */
+    public function periodStart(string $period = 'today'): string
+    {
+        $period = in_array($period, ['hour', '24h', '7d'], true) ? $period : 'today';
+
+        return match ($period) {
+            'hour' => now()->subHour()->format('Y-m-d H:i:s'),
+            '24h' => now()->subHours(24)->format('Y-m-d H:i:s'),
+            '7d' => now()->subDays(7)->format('Y-m-d H:i:s'),
+            default => today()->toDateString(),
+        };
+    }
+
     public function tableExists(): bool
     {
         return $this->cachedTableExists ??= Schema::hasTable($this->table);

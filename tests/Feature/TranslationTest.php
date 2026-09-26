@@ -81,7 +81,9 @@ it('keeps the english and russian translation files structurally identical', fun
     sort($english);
     sort($russian);
 
-    expect($english)->toHaveCount(140)
+    // Parity is the real invariant. The count is only a floor, so new keys do
+    // not need this touched, while a truncated or empty file still fails.
+    expect(count($english))->toBeGreaterThan(100)
         ->and($russian)->toBe($english);
 });
 

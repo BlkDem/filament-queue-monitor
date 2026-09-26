@@ -9,6 +9,7 @@ return [
         'queues' => 'Queues',
         'jobs' => 'Jobs',
         'delayed_jobs' => 'Delayed Jobs',
+        'completed_jobs' => 'Completed Jobs',
         'failed_jobs' => 'Failed Jobs',
         'queue_details' => 'Queue Details',
         'failed_job' => 'Failed Job',
@@ -84,6 +85,20 @@ return [
 
     'delayed_jobs' => [
         'title' => 'Delayed Jobs',
+    ],
+
+    'completed_jobs' => [
+        'title' => 'Completed Jobs',
+        'subtitle' => 'Jobs that ran successfully, grouped by class over the selected period',
+        'job' => 'Job Class',
+        'processed' => 'Completed',
+        'failed' => 'Failed',
+        'avg_time' => 'Avg time',
+        'max_time' => 'Max time',
+        'last_activity' => 'Last activity',
+        'period' => 'Period',
+        'search_placeholder' => 'Search job classes...',
+        'empty' => 'No completed jobs were recorded for this period.',
     ],
 
     'failed_jobs' => [
