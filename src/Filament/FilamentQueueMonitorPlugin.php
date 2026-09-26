@@ -10,6 +10,7 @@ use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListCompletedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListDelayedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ViewCompletedJob;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
@@ -34,6 +35,7 @@ class FilamentQueueMonitorPlugin implements Plugin
             ListJobs::class,
             ListDelayedJobs::class,
             ListCompletedJobs::class,
+            ViewCompletedJob::class,
             ListFailedJobs::class,
             ViewFailedJob::class,
         ]);

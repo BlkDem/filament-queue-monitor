@@ -3,6 +3,7 @@
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListCompletedJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ViewCompletedJob;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
@@ -134,6 +135,121 @@ it('narrows with the queue filter through filament', function () {
     expect($records)->toHaveCount(1)
         ->and($records->first()->queue)->toBe('reports')
         ->and($records->first()->processed)->toBe(8);
+});
+
+it('encodes the job class safely for the url', function () {
+    // A backslash is not escaped by Laravel's route parameter encoder and can
+    // be normalised away by a browser, so the namespace separator is swapped.
+    expect(ViewCompletedJob::encodeJob('App\Jobs\ProcessDataJob'))->toBe('App~Jobs~ProcessDataJob')
+        ->and(ViewCompletedJob::encodeJob('App\Jobs\ProcessDataJob'))->not->toContain('\\')
+        ->and(ViewCompletedJob::decodeJob('App~Jobs~ProcessDataJob'))->toBe('App\Jobs\ProcessDataJob')
+        ->and(ViewCompletedJob::decodeJob(ViewCompletedJob::encodeJob('App\Jobs\SendMail')))
+        ->toBe('App\Jobs\SendMail');
+});
+
+it('links each job class on the list to its detail page', function () {
+    insertMetricRow('emails', 'App\Jobs\SendMail', 4, 0, 0.10, 0.20);
+
+    // getUrl() needs a panel to resolve the route name.
+    app()->instance('filament', new \Filament\FilamentManager);
+    app()->alias('filament', \Filament\FilamentManager::class);
+
+    $panel = \Filament\Panel::make('admin')->id('admin')->path('admin')->pages([
+        ListCompletedJobs::class,
+        ViewCompletedJob::class,
+    ]);
+
+    \Filament\Facades\Filament::registerPanel($panel);
+    \Filament\Facades\Filament::setCurrentPanel($panel);
+
+    foreach ([ListCompletedJobs::class, ViewCompletedJob::class] as $pageClass) {
+        $parameters = $pageClass === ViewCompletedJob::class
+            ? ['job' => ViewCompletedJob::encodeJob('App\Jobs\SendMail')]
+            : [];
+
+        Illuminate\Support\Facades\Route::get(
+            $pageClass::getRoutePath($panel, $parameters),
+            fn () => 'ok',
+        )->name($pageClass::getRouteName('admin'));
+    }
+
+    $page = new ListCompletedJobs();
+    $column = collect($page->table(Table::make($page))->getColumns())
+        ->first(fn ($column) => $column->getName() === 'job');
+
+    $record = new \BlkDem\FilamentQueueMonitor\QueueMonitor\Models\Metric;
+    $record->setRawAttributes(['job' => 'App\Jobs\SendMail', 'queue' => 'emails', 'processed' => 4]);
+    $column->record($record);
+
+    $url = $column->getUrl();
+
+    expect($url)->toContain('completed-jobs/App~Jobs~SendMail')
+        ->and($url)->not->toContain('\\');
+});
+
+it('lists the minute by minute activity of one job class', function () {
+    insertMetricRow('emails', 'App\Jobs\SendMail', 5, 1, 0.30, 0.90, now()->format('Y-m-d H:i:s'));
+    insertMetricRow('emails', 'App\Jobs\SendMail', 2, 0, 0.40, 0.60, now()->subMinute()->format('Y-m-d H:i:s'));
+    insertMetricRow('reports', 'App\Jobs\BuildReport', 9, 0, 1.00, 1.00, now()->subMinutes(2)->format('Y-m-d H:i:s'));
+    insertMetricRow('emails', 'App\Jobs\SendMail', 7, 0, 0.10, 0.10, now()->subDays(10)->format('Y-m-d H:i:s'));
+
+    $page = new ViewCompletedJob();
+    $page->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'));
+
+    $rows = $page->getTableQuery()->get();
+
+    expect($page->job)->toBe('App\Jobs\SendMail')
+        ->and($rows)->toHaveCount(2, 'the row from three days ago is outside the default 7d window filter')
+        ->and($rows->pluck('queue')->unique()->all())->toBe(['emails'])
+        ->and($rows->sum('processed'))->toBe(7)
+        ->and($rows->sum('failed'))->toBe(1)
+        ->and($rows->max('max_runtime'))->toBe(0.90);
+});
+
+it('scopes the detail page to the queue connection in use', function () {
+    insertMetricRow('emails', 'App\Jobs\SendMail', 4, 0, 0.10, 0.20, connection: 'database');
+
+    $page = new ViewCompletedJob();
+    $page->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'));
+
+    expect($page->getTableQuery()->get())->toHaveCount(1);
+
+    config()->set('queue.default', 'redis');
+
+    $redis = new ViewCompletedJob();
+    $redis->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'));
+
+    expect($redis->getTableQuery()->get())->toHaveCount(0);
+});
+
+it('translates the detail page and keeps it out of the navigation', function () {
+    App::setLocale('ru');
+
+    $page = new ViewCompletedJob();
+    $page->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'));
+    $table = $page->table(Table::make($page));
+
+    $labels = array_map(fn ($column) => $column->getLabel(), $table->getColumns());
+
+    expect($labels)->toContain('Минута', 'Очередь', 'Выполнено', 'Неудачно', 'Среднее время', 'Макс. время')
+        ->and($table->getEmptyStateDescription())->toBe('За выбранный период этот класс заданий не выполнялся.')
+        ->and($table->getSearchPlaceholder())->toBe('Поиск очередей...')
+        ->and($page->getSubheading())->toBe('Активность этого класса заданий по минутам')
+        ->and($page->getHeading())->toBe('App\Jobs\SendMail')
+        ->and(ViewCompletedJob::shouldRegisterNavigation())->toBeFalse();
+
+    App::setLocale('en');
+});
+
+it('returns nothing on the detail page when metrics are disabled', function () {
+    insertMetricRow('emails', 'App\Jobs\SendMail', 4, 0, 0.10, 0.20);
+
+    config()->set('filament-queue-monitor.metrics.enabled', false);
+
+    $page = new ViewCompletedJob();
+    $page->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'));
+
+    expect($page->getTableQuery()->get())->toHaveCount(0);
 });
 
 it('exposes translated columns, filters and placeholders', function () {

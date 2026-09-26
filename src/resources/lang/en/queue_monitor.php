@@ -99,6 +99,11 @@ return [
         'period' => 'Period',
         'search_placeholder' => 'Search job classes...',
         'empty' => 'No completed jobs were recorded for this period.',
+        'minute' => 'Minute',
+        'detail_subtitle' => 'Activity of this job class, minute by minute',
+        'detail_empty' => 'Nothing ran for this job class in the selected period.',
+        'detail_search_placeholder' => 'Search queues...',
+        'back' => 'Back to completed jobs',
     ],
 
     'failed_jobs' => [
