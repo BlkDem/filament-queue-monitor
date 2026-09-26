@@ -9,17 +9,21 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Jobs\Job;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\CompletedJobsStorage;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 
 class RecordQueueMetrics
 {
     protected MetricsStorage $storage;
 
+    protected CompletedJobsStorage $completed;
+
     protected bool $isEnabled;
 
-    public function __construct(MetricsStorage $storage)
+    public function __construct(MetricsStorage $storage, ?CompletedJobsStorage $completed = null)
     {
         $this->storage = $storage;
+        $this->completed = $completed ?? app(CompletedJobsStorage::class);
         $this->isEnabled = (bool) config('filament-queue-monitor.enabled', true)
             && $storage->isEnabled()
             && $storage->tableExists();
@@ -56,6 +60,16 @@ class RecordQueueMetrics
             avgRuntime: $runtime,
             maxRuntime: $runtime,
             job: $this->getJobName($event->job),
+        );
+
+        // The aggregate above cannot be split back into individual runs, so the
+        // per-run record is written separately while the job is still in hand.
+        $this->completed->record(
+            $event->connectionName,
+            $event->job->getQueue(),
+            $this->getJobName($event->job),
+            $this->getJobUuid($event->job),
+            $runtime,
         );
     }
 
@@ -105,6 +119,17 @@ class RecordQueueMetrics
         }
 
         return 'queue-monitor:start:'.md5($connectionName.':'.(string) $jobId);
+    }
+
+    protected function getJobUuid(Job $job): ?string
+    {
+        try {
+            $uuid = $job->uuid();
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_string($uuid) && $uuid !== '' ? $uuid : null;
     }
 
     protected function getJobName(Job $job): string

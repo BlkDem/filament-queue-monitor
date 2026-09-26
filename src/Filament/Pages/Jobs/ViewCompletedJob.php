@@ -81,7 +81,12 @@ class ViewCompletedJob extends Page implements HasTable
                 TextColumn::make('period')
                     ->label(Trans::get('completed_jobs.minute'))
                     ->dateTime()
-                    ->sortable(),
+                    ->sortable()
+                    ->color('primary')
+                    ->url(fn ($record): string => ListCompletedJobRuns::getUrl([
+                        'job' => ViewCompletedJob::encodeJob($this->job),
+                        'minute' => ListCompletedJobRuns::encodeMinute((string) $record->period),
+                    ])),
                 TextColumn::make('queue')
                     ->label(Trans::get('common.queue'))
                     ->badge()

@@ -104,6 +104,16 @@ return [
         'detail_empty' => 'Nothing ran for this job class in the selected period.',
         'detail_search_placeholder' => 'Search queues...',
         'back' => 'Back to completed jobs',
+        'breadcrumb_class' => 'By job class',
+        'runs_heading' => 'Runs of :job',
+        'runs_subtitle' => 'Individual executions at :minute',
+        'runs_table_missing' => 'Run the queue monitor migrations to start recording individual runs.',
+        'runs_empty' => 'No individual runs were recorded for this job class in this minute.',
+        'runs_search_placeholder' => 'Search job ids...',
+        'back_to_class' => 'Back to job class',
+        'uuid' => 'Job ID',
+        'runtime' => 'Duration',
+        'finished_at' => 'Finished at',
     ],
 
     'failed_jobs' => [

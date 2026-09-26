@@ -7,6 +7,7 @@ use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\CompletedJobsStorage;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
 
@@ -81,6 +82,10 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
     {
         $this->app->singleton(MetricsStorage::class, function () {
             return new MetricsStorage();
+        });
+
+        $this->app->singleton(CompletedJobsStorage::class, function () {
+            return new CompletedJobsStorage();
         });
     }
 
