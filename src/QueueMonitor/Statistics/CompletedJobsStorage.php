@@ -53,6 +53,7 @@ class CompletedJobsStorage
         ?string $uuid = null,
         ?float $runtime = null,
         ?Carbon $finishedAt = null,
+        ?string $payload = null,
     ): void {
         if (! $this->isEnabled() || ! $this->tableExists()) {
             return;
@@ -65,6 +66,7 @@ class CompletedJobsStorage
             'queue' => $queue !== '' ? $queue : 'default',
             'job' => $job !== '' ? $job : 'unknown',
             'uuid' => $uuid,
+            'payload' => $payload,
             'runtime' => $runtime,
             'finished_at' => $finishedAt?->toDateTimeString() ?? $now->toDateTimeString(),
             'created_at' => $now,

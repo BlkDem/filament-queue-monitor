@@ -70,6 +70,8 @@ class RecordQueueMetrics
             $this->getJobName($event->job),
             $this->getJobUuid($event->job),
             $runtime,
+            null,
+            $this->getJobPayload($event->job),
         );
     }
 
@@ -119,6 +121,25 @@ class RecordQueueMetrics
         }
 
         return 'queue-monitor:start:'.md5($connectionName.':'.(string) $jobId);
+    }
+
+    /**
+     * The raw payload, kept so the completed run can still be inspected. It
+     * holds the serialized command, which is why the column is longText and
+     * why the same data Laravel keeps in failed_jobs.
+     *
+     * Job::payload() is not used here: it decodes to an array, and the raw
+     * body is what has to be stored verbatim.
+     */
+    protected function getJobPayload(Job $job): ?string
+    {
+        try {
+            $payload = $job->getRawBody();
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_string($payload) && $payload !== '' ? $payload : null;
     }
 
     protected function getJobUuid(Job $job): ?string

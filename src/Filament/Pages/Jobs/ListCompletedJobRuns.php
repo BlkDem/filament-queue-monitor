@@ -97,7 +97,13 @@ class ListCompletedJobRuns extends Page implements HasTable
                     ->searchable()
                     ->copyable()
                     ->placeholder(Trans::get('common.empty_value'))
-                    ->wrap(),
+                    ->wrap()
+                    ->color('primary')
+                    ->url(fn ($record): string => ViewCompletedJobRun::getUrl([
+                        'job' => ViewCompletedJob::encodeJob($this->job),
+                        'minute' => ListCompletedJobRuns::encodeMinute((string) $record->finished_at),
+                        'id' => $record->getKey(),
+                    ])),
                 TextColumn::make('runtime')
                     ->label(Trans::get('completed_jobs.runtime'))
                     ->formatStateUsing(fn ($state): string => $this->formatRuntime($state))

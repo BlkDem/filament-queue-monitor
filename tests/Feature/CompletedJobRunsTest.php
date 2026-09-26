@@ -6,6 +6,7 @@ use Filament\Tables\Table;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListCompletedJobRuns;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListCompletedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ViewCompletedJob;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ViewCompletedJobRun;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Listeners\RecordQueueMetrics;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\Metric;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\CompletedJobsStorage;
@@ -187,6 +188,150 @@ it('links each minute on the job class page to the runs list', function () {
     $column->record($record);
 
     expect($column->getUrl())->toContain('/runs/202609260610')
+        ->toContain('App~Jobs~SendMail');
+});
+
+it('records the raw payload alongside each run', function () {
+    $storage = new MetricsStorage;
+    $completed = new CompletedJobsStorage;
+
+    $job = new class extends \Illuminate\Queue\Jobs\Job
+    {
+        public function uuid(): ?string
+        {
+            return 'run-uuid-payload';
+        }
+
+        public function getJobId(): string
+        {
+            return 'run-uuid-payload';
+        }
+
+        public function getRawBody(): string
+        {
+            return json_encode(['displayName' => 'App\Jobs\SendMail', 'attempts' => 2]);
+        }
+
+        public function resolveName(): string
+        {
+            return 'App\Jobs\SendMail';
+        }
+
+        public function getQueue(): string
+        {
+            return 'emails';
+        }
+    };
+
+    (new RecordQueueMetrics($storage, $completed))->handleProcessed(
+        new \Illuminate\Queue\Events\JobProcessed('database', $job)
+    );
+
+    $payload = DB::table('queue_monitor_completed_jobs')->value('payload');
+
+    // Stored verbatim, not the array Job::payload() decodes to.
+    $decoded = json_decode((string) $payload, true);
+
+    expect($payload)->toBeString()
+        ->and($decoded)->toBeArray()
+        ->and($decoded['displayName'])->toBe('App\\Jobs\\SendMail')
+        ->and($decoded['attempts'])->toBe(2);
+});
+
+it('shows a single run with its details and formatted payload', function () {
+    $payload = json_encode(['displayName' => 'App\Jobs\SendMail', 'attempts' => 2]);
+    $minute = '2026-09-26 06:10:00';
+
+    insertCompletedRun('App\Jobs\SendMail', 'emails', 'a-1', 0.12, $minute);
+    DB::table('queue_monitor_completed_jobs')->where('uuid', 'a-1')->update(['payload' => $payload]);
+
+    $id = (int) DB::table('queue_monitor_completed_jobs')->where('uuid', 'a-1')->value('id');
+
+    $page = new ViewCompletedJobRun;
+    $page->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'), '202609260610', $id);
+
+    $run = $page->run();
+
+    expect($page->job)->toBe('App\Jobs\SendMail')
+        ->and($run)->not->toBeNull()
+        ->and($run->uuid)->toBe('a-1')
+        ->and($page->getHeading())->toBe('a-1')
+        ->and($page->getSubheading())->toBe('App\Jobs\SendMail');
+
+    $viewData = $page->getViewData();
+
+    // json is pretty printed for readability
+    $decoded = json_decode($viewData['formattedPayload'], true);
+
+    expect($viewData['formattedPayload'])->toContain("\n")
+        ->and($decoded)->toBeArray()
+        ->and($decoded['displayName'])->toBe('App\\Jobs\\SendMail');
+});
+
+it('shows a non json payload verbatim', function () {
+    $raw = 'eyJ1dWlkIjoiYWJjIn0=';
+    $minute = '2026-09-26 06:10:00';
+
+    insertCompletedRun('App\Jobs\SendMail', 'emails', 'a-1', 0.12, $minute);
+    DB::table('queue_monitor_completed_jobs')->where('uuid', 'a-1')->update(['payload' => $raw]);
+
+    $id = (int) DB::table('queue_monitor_completed_jobs')->where('uuid', 'a-1')->value('id');
+
+    $page = new ViewCompletedJobRun;
+    $page->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'), '202609260610', $id);
+
+    expect($page->getViewData()['formattedPayload'])->toBe($raw);
+});
+
+it('reports a missing run as empty rather than failing', function () {
+    $page = new ViewCompletedJobRun;
+    $page->mount(ViewCompletedJob::encodeJob('App\Jobs\SendMail'), '202609260610', 999999);
+
+    expect($page->run())->toBeNull()
+        ->and($page->getHeading())->toBe('Completed run')
+        ->and($page->getViewData()['formattedPayload'])->toBeNull();
+});
+
+it('links each run id on the runs list to the run page', function () {
+    app()->instance('filament', new \Filament\FilamentManager);
+    app()->alias('filament', \Filament\FilamentManager::class);
+
+    $panel = \Filament\Panel::make('admin')->id('admin')->path('admin')->pages([
+        ListCompletedJobs::class,
+        ViewCompletedJob::class,
+        ListCompletedJobRuns::class,
+        ViewCompletedJobRun::class,
+    ]);
+
+    \Filament\Facades\Filament::registerPanel($panel);
+    \Filament\Facades\Filament::setCurrentPanel($panel);
+
+    $job = ViewCompletedJob::encodeJob('App\Jobs\SendMail');
+    $minute = ListCompletedJobRuns::encodeMinute('2026-09-26 06:10:00');
+
+    foreach ([
+        ListCompletedJobs::class => [],
+        ViewCompletedJob::class => ['job' => $job],
+        ListCompletedJobRuns::class => ['job' => $job, 'minute' => $minute],
+        ViewCompletedJobRun::class => ['job' => $job, 'minute' => $minute, 'id' => 42],
+    ] as $pageClass => $parameters) {
+        Illuminate\Support\Facades\Route::get(
+            $pageClass::getRoutePath($panel, $parameters),
+            fn () => 'ok',
+        )->name($pageClass::getRouteName('admin'));
+    }
+
+    $page = new ListCompletedJobRuns;
+    $page->mount($job, $minute);
+    $column = collect($page->table(Table::make($page))->getColumns())
+        ->first(fn ($column) => $column->getName() === 'uuid');
+
+    $record = new \BlkDem\FilamentQueueMonitor\QueueMonitor\Models\CompletedJob;
+    $record->setRawAttributes(['uuid' => 'a-1', 'queue' => 'emails', 'finished_at' => '2026-09-26 06:10:00']);
+    $record->id = 42;
+    $column->record($record);
+
+    expect($column->getUrl())->toContain('/runs/202609260610/42')
         ->toContain('App~Jobs~SendMail');
 });
 
