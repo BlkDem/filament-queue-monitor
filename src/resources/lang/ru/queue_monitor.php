@@ -31,7 +31,7 @@ return [
         'processed_last_hour' => 'Выполнено за час',
 
         'description' => [
-            'total_queues' => 'Всего очередей: :count',
+            'queues_breakdown' => 'Всего очередей: :total, неактивных: :inactive',
             'processing_count' => ':count в обработке',
             'awaiting_processing' => 'Ожидают обработки',
             'currently_working' => 'Сейчас обрабатываются',

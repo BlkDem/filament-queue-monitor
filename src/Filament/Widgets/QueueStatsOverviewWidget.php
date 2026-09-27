@@ -7,7 +7,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
-use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class QueueStatsOverviewWidget extends BaseWidget
@@ -63,55 +63,38 @@ class QueueStatsOverviewWidget extends BaseWidget
             'failed' => 0,
         ];
 
+        $activeQueuesCount = 0;
+
         foreach ($driverQueues as $queueInfo) {
             $allStats['queues']++;
             $allStats['pending'] += $queueInfo->pending;
             $allStats['processing'] += $queueInfo->processing;
             $allStats['failed'] += $queueInfo->failed;
-        }
 
-        // Get total configured queues from Laravel queue config
-        $defaultConnection = config('queue.default', 'database');
-        $queueConfig = config("queue.connections.{$defaultConnection}.queue", 'default');
-        $totalConfiguredQueues = is_array($queueConfig) ? count($queueConfig) : 1;
-
-        // A redis queue connection declares a single queue name, which says
-        // nothing about how many are in use. Fall back to the allowlist when
-        // it is set, otherwise report what the driver actually found.
-        if (config('filament-queue-monitor.driver') === 'redis') {
-            $allowlist = config('filament-queue-monitor.redis.queues', []);
-
-            if (is_string($allowlist)) {
-                $allowlist = array_filter(array_map('trim', explode(',', $allowlist)));
+            if ($this->queueHasWork($queueInfo)) {
+                $activeQueuesCount++;
             }
-
-            $totalConfiguredQueues = count($allowlist) > 0
-                ? count($allowlist)
-                : $allStats['queues'];
         }
 
-        // Active queues come from the driver being monitored, so the stat
-        // agrees with the per-queue tables below it. The database driver keeps
-        // using the same source as QueueActivityWidget.
-        $activeQueuesCount = config('filament-queue-monitor.driver') === 'redis'
-            ? $allStats['queues']
-            : QueueJob::query()
-                ->where(function ($query) {
-                    $query->whereNull('reserved_at')
-                        ->where('available_at', '<=', now()->timestamp)
-                        ->orWhereNotNull('reserved_at');
-                })
-                ->distinct('queue')
-                ->count('queue');
+        // A queue is active when it holds work right now. Counting the queues
+        // the driver merely knows about made the headline number drift with
+        // the allowlist instead of with the load, and left the description
+        // showing the same figure as the headline.
+        $knownQueues = $this->knownQueueNames($driverQueues);
+        $totalQueuesCount = count($knownQueues);
+        $inactiveQueuesCount = max(0, $totalQueuesCount - $activeQueuesCount);
 
         $thresholdHours = config('filament-queue-monitor.stuck_jobs.threshold_hours', 12);
         $stuckCount = $driver->stuckJobsCount($thresholdHours);
 
         return [
             Stat::make(Trans::get('stats.queues'), $activeQueuesCount)
-                ->description(Trans::get('stats.description.total_queues', ['count' => $totalConfiguredQueues]))
+                ->description(Trans::get('stats.description.queues_breakdown', [
+                    'total' => $totalQueuesCount,
+                    'inactive' => $inactiveQueuesCount,
+                ]))
                 ->icon('heroicon-o-queue-list')
-                ->color('gray')
+                ->color($activeQueuesCount > 0 ? 'gray' : 'success')
                 ->url(ListQueues::getUrl()),
             Stat::make(Trans::get('stats.pending'), $allStats['pending'])
                 ->description(Trans::get('stats.description.processing_count', ['count' => $allStats['processing']]))
@@ -130,5 +113,60 @@ class QueueStatsOverviewWidget extends BaseWidget
                 ->color($stuckCount > 0 ? 'danger' : 'success')
                 ->url(ListJobs::getUrl(['status' => 'processing'])),
         ];
+    }
+
+    /**
+     * Anything waiting, running, scheduled for later or holding a failure
+     * counts as work. A queue the driver can name but that holds none of these
+     * is idle, which is what the headline number leaves out.
+     */
+    protected function queueHasWork(QueueInfo $queueInfo): bool
+    {
+        return $queueInfo->pending > 0
+            || $queueInfo->processing > 0
+            || $queueInfo->delayed > 0
+            || $queueInfo->failed > 0;
+    }
+
+    /**
+     * Every queue the package can account for: the ones declared in the
+     * connection config, the ones listed in the redis allowlist, and the ones
+     * the driver found. The union is what "total" means, so a queue that has
+     * gone quiet still shows up as inactive instead of disappearing.
+     *
+     * @param  iterable<QueueInfo>  $discovered
+     * @return list<string>
+     */
+    protected function knownQueueNames(iterable $discovered): array
+    {
+        $names = [];
+
+        $add = function (mixed $name) use (&$names): void {
+            if (is_string($name) && trim($name) !== '') {
+                $names[trim($name)] = true;
+            }
+        };
+
+        $connection = config('queue.default', 'database');
+
+        foreach ((array) config("queue.connections.{$connection}.queue", 'default') as $name) {
+            $add($name);
+        }
+
+        $allowlist = config('filament-queue-monitor.redis.queues', []);
+
+        if (is_string($allowlist)) {
+            $allowlist = explode(',', $allowlist);
+        }
+
+        foreach ((array) $allowlist as $name) {
+            $add($name);
+        }
+
+        foreach ($discovered as $queueInfo) {
+            $add($queueInfo->name);
+        }
+
+        return array_keys($names);
     }
 }

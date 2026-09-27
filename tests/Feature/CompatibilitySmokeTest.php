@@ -16,6 +16,7 @@ use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueCountersWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use BlkDem\FilamentQueueMonitor\Support\Trans;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\FailedJob as QueueMonitorFailedJob;
@@ -881,4 +882,65 @@ it('links every dashboard counter to the page that explains it', function () {
         ->toContain('queue-monitor/delayed-jobs')
         ->toContain('queue-monitor/failed-jobs')
         ->toContain('queue-monitor/completed-jobs');
+});
+
+it('separates active queues from idle ones in the queues tile', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+
+    bindTestFilamentManager([
+        Dashboard::class,
+        ListQueues::class,
+        ListJobs::class,
+    ]);
+
+    DB::table('jobs')->insert([
+        // busy: two jobs waiting on it
+        [
+            'queue' => 'emails',
+            'payload' => json_encode(['data' => []]),
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => now()->timestamp,
+            'created_at' => now()->timestamp,
+        ],
+        [
+            'queue' => 'emails',
+            'payload' => json_encode(['data' => []]),
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => now()->timestamp,
+            'created_at' => now()->timestamp,
+        ],
+        // idle: only ever held a job that has since run
+        [
+            'queue' => 'archive',
+            'payload' => json_encode(['data' => []]),
+            'attempts' => 0,
+            // reserved in the past and not released: nothing to do, but the
+            // database driver still reports it, so it must not count as busy
+            'reserved_at' => null,
+            'available_at' => now()->subDay()->timestamp,
+            'created_at' => now()->subDay()->timestamp,
+        ],
+    ]);
+
+    $stats = \Closure::bind(
+        fn () => $this->getStats(),
+        new QueueStatsOverviewWidget(),
+        QueueStatsOverviewWidget::class,
+    )();
+
+    $queues = collect($stats)->firstWhere(fn (Stat $stat): bool => $stat->getLabel() === Trans::get('stats.queues'));
+
+    expect($queues)->not->toBeNull();
+
+    // The headline is the number of queues holding work, and the description
+    // has to be a different, larger figure, otherwise the two say the same
+    // thing twice and the idle ones are invisible.
+    expect((int) $queues->getValue())->toBe(2)
+        ->and($queues->getDescription())->toContain('3')
+        ->and($queues->getDescription())->not->toBe(Trans::get('stats.description.queues_breakdown', [
+            'total' => 2,
+            'inactive' => 0,
+        ]));
 });

@@ -212,7 +212,7 @@ it('localises the delayed-for display', function () {
 it('interpolates placeholders in translated descriptions', function () {
     App::setLocale('ru');
 
-    expect(Trans::get('stats.description.total_queues', ['count' => 4]))->toBe('Всего очередей: 4')
+    expect(Trans::get('stats.description.queues_breakdown', ['total' => 7, 'inactive' => 3]))->toBe('Всего очередей: 7, неактивных: 3')
         ->and(Trans::get('stats.description.stuck_jobs', ['hours' => 12]))->toBe('Зависли дольше 12 ч (reserved_at)')
         ->and(Trans::get('queue_details.title', ['name' => 'emails']))->toBe('Детали очереди: emails')
         ->and(Trans::get('actions.retried_body', ['id' => 7]))->toBe('Неудачное задание #7 отправлено на повтор.');

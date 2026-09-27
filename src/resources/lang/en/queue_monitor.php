@@ -31,7 +31,7 @@ return [
         'processed_last_hour' => 'Processed (Last Hour)',
 
         'description' => [
-            'total_queues' => 'Total queues: :count',
+            'queues_breakdown' => 'Total queues: :total, idle: :inactive',
             'processing_count' => ':count processing',
             'awaiting_processing' => 'Awaiting processing',
             'currently_working' => 'Currently being worked on',
