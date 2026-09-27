@@ -2,6 +2,7 @@
 
 namespace BlkDem\FilamentQueueMonitor;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\RedisQueueMonitorDriver;
@@ -42,6 +43,8 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
             'filament-queue-monitor'
         );
 
+        $this->registerViewComponents();
+
         if (config('filament-queue-monitor.enabled', true)) {
             $this->loadMigrationsFrom(__DIR__ . '/Database/Migrations');
         }
@@ -61,6 +64,16 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/resources/lang' => lang_path('vendor/'.Trans::NAMESPACE),
         ], 'filament-queue-monitor-lang');
+    }
+
+    /**
+     * Every page goes through the same shell, so the frame is written once.
+     * Registering it as a component rather than including the partial by hand
+     * keeps the slots visible at the call site.
+     */
+    protected function registerViewComponents(): void
+    {
+        Blade::component('filament-queue-monitor::pages.partials.page-shell', 'page-shell');
     }
 
     protected function registerManager(): void

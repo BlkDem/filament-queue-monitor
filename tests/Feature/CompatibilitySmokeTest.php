@@ -18,6 +18,21 @@ use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\FailedJob as QueueMonitorFailedJob;
 
+beforeEach(function () {
+    // The detail views are built from filament's own components, so the
+    // support provider has to be loaded for them to render. Without it
+    // <x-filament::section /> compiles to its own name and the assertions
+    // below would pass against markup no browser ever sees.
+    foreach ([
+        \Livewire\LivewireServiceProvider::class,
+        \Filament\Support\SupportServiceProvider::class,
+    ] as $provider) {
+        if (! app()->providerIsLoaded($provider)) {
+            app()->register($provider);
+        }
+    }
+});
+
 it('builds queue monitor tables', function () {
     config()->set('filament-queue-monitor.driver', 'database');
     config()->set('filament-queue-monitor.refresh_interval', 0);
@@ -756,7 +771,12 @@ it('renders the failed job detail view with payload and collapsible exception', 
         ->and($html)->toContain('App\\Jobs\\SimulateErrorJob')
         ->and($html)->toContain('Payload')
         ->and($html)->toContain('Error')
-        ->and($html)->toContain('fqm-codebox')
+        // The cards are filament sections now, not a hand-rolled card class,
+        // and the exception block is a collapsible section rather than a
+        // hand-written <details> element.
+        ->and($html)->toContain('fi-section')
+        ->and($html)->toContain('fqm-code')
+        ->and($html)->not->toContain('fqm-card')
         ->and($html)->toContain('RuntimeException')
         ->and($html)->toContain('&quot;displayName&quot;');
 });

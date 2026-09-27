@@ -142,7 +142,6 @@ return [
         'no_payload' => 'No payload.',
         'error' => 'Error',
         'error_subtitle' => 'Exception thrown by the job',
-        'show_error' => 'Show error...',
         'unknown' => 'Unknown',
     ],
 
