@@ -5,7 +5,6 @@ return [
     'navigation' => [
         'group' => 'Монитор очередей',
         'label' => 'Монитор очередей',
-        'dashboard' => 'Панель',
         'queues' => 'Очереди',
         'jobs' => 'Задания',
         'delayed_jobs' => 'Отложенные задания',
@@ -26,7 +25,6 @@ return [
         'processing' => 'В обработке',
         'delayed' => 'Отложено',
         'failed' => 'Неудачные',
-        'total' => 'Всего',
         'stuck_jobs' => 'Зависшие задания',
         'delayed_jobs' => 'Отложенные задания',
         'failed_jobs' => 'Неудачные задания',

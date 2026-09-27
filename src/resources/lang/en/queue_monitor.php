@@ -5,7 +5,6 @@ return [
     'navigation' => [
         'group' => 'Queue Monitor',
         'label' => 'Queue Monitor',
-        'dashboard' => 'Dashboard',
         'queues' => 'Queues',
         'jobs' => 'Jobs',
         'delayed_jobs' => 'Delayed Jobs',
@@ -26,7 +25,6 @@ return [
         'processing' => 'Processing',
         'delayed' => 'Delayed',
         'failed' => 'Failed',
-        'total' => 'Total',
         'stuck_jobs' => 'Stuck Jobs',
         'delayed_jobs' => 'Delayed Jobs',
         'failed_jobs' => 'Failed Jobs',

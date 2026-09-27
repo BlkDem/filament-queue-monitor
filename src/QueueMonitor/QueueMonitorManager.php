@@ -28,7 +28,14 @@ class QueueMonitorManager extends Manager
             return 'redis';
         }
 
-        if (in_array($driver, ['database', 'sync'], true)) {
+        if ($driver === 'database') {
+            return 'database';
+        }
+
+        if ($driver === 'sync') {
+            // Nothing is ever queued, so there is no jobs table and no redis
+            // keys to read. The database driver was mapped here before and
+            // queried a table that does not exist in a sync app.
             return 'database';
         }
 

@@ -119,3 +119,27 @@ describe('Security', function () {
         expect(Access::canAccess())->toBeTrue();
     });
 });
+
+it('hides the plugin when the queue connection is sync', function () {
+    // Nothing is ever queued, so there is no jobs table and no redis keys.
+    // The pages would show a single empty queue forever.
+    config()->set('filament-queue-monitor.driver', 'sync');
+    config()->set('filament-queue-monitor.authorize', true);
+
+    expect(Access::canAccess())->toBeFalse();
+});
+
+it('hides the plugin when the resolved connection is sync', function () {
+    config()->set('filament-queue-monitor.driver', 'local-sync');
+    config()->set('filament-queue-monitor.authorize', true);
+    config()->set('queue.connections.local-sync', ['driver' => 'sync']);
+
+    expect(Access::canAccess())->toBeFalse();
+});
+
+it('still allows access for a real queue connection', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+    config()->set('filament-queue-monitor.authorize', true);
+
+    expect(Access::canAccess())->toBeTrue();
+});

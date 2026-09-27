@@ -217,3 +217,51 @@ it('interpolates placeholders in translated descriptions', function () {
         ->and(Trans::get('queue_details.title', ['name' => 'emails']))->toBe('Детали очереди: emails')
         ->and(Trans::get('actions.retried_body', ['id' => 7]))->toBe('Неудачное задание #7 отправлено на повтор.');
 });
+
+it('has no translation key that nothing reads', function () {
+    $flat = function (array $lines, string $prefix = '') use (&$flat): array {
+        $out = [];
+
+        foreach ($lines as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix.'.'.$key;
+
+            if (is_array($value)) {
+                $out += $flat($value, $path);
+
+                continue;
+            }
+
+            $out[] = $path;
+        }
+
+        return $out;
+    };
+
+    $english = $flat(require __DIR__ . '/../../src/resources/lang/en/queue_monitor.php');
+
+    $code = '';
+
+    foreach ([
+        __DIR__ . '/../../src',
+    ] as $dir) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)) as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php' && ! str_contains((string) $file->getPathname(), '/lang/')) {
+                $code .= file_get_contents((string) $file->getPathname());
+            }
+        }
+    }
+
+    // These are read through the Trans helpers rather than a literal key.
+    $throughHelpers = ['navigation.group', 'status.unknown', 'delayed.minutes', 'delayed.hours'];
+
+    $unused = array_values(array_filter(
+        $english,
+        fn (string $key): bool => ! in_array($key, $throughHelpers, true)
+            && ! str_contains($code, "'".$key."'")
+            && ! str_contains($code, '"'.$key.'"'),
+    ));
+
+    // An unused key is either a leftover or a feature that was wired up
+    // nowhere, and both are worth noticing.
+    expect($unused)->toBe([]);
+});
