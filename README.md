@@ -34,15 +34,16 @@ The published configuration is available at `config/filament-queue-monitor.php`.
 
 ```php
 return [
-    'enabled' => true,
+    'enabled' => env('QUEUE_MONITOR_ENABLED', true),
 
     'driver' => env('QUEUE_MONITOR_DRIVER'),
 
-    'refresh_interval' => 10,
+    'refresh_interval' => env('QUEUE_MONITOR_REFRESH_INTERVAL', 10),
 
     'metrics' => [
         'enabled' => env('QUEUE_MONITOR_METRICS_ENABLED', true),
         'table' => env('QUEUE_MONITOR_METRICS_TABLE', 'queue_monitor_metrics'),
+        'table_completed_jobs' => env('QUEUE_MONITOR_COMPLETED_JOBS_TABLE', 'queue_monitor_completed_jobs'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
     ],
@@ -75,6 +76,7 @@ return [
 
 | Variable | Default | Description |
 |---|---|---|
+| `QUEUE_MONITOR_ENABLED` | `true` | Master switch. When false every page and widget is hidden. |
 | `QUEUE_MONITOR_DRIVER` | — | Queue driver to monitor: `database` or `redis` |
 | `QUEUE_MONITOR_AUTHORIZE` | `false` | Access control. Set to `true` to allow all authenticated users. Use a Closure or Gate ability for custom logic. |
 | `QUEUE_MONITOR_NAV_ENABLED` | `true` | Show/hide navigation group |
@@ -82,7 +84,8 @@ return [
 | `QUEUE_MONITOR_NAV_SORT` | `0` | Navigation sort order |
 | `QUEUE_MONITOR_REFRESH_INTERVAL` | `10` | Dashboard auto-refresh interval in seconds (0 = disabled) |
 | `QUEUE_MONITOR_METRICS_ENABLED` | `true` | Enable metrics collection |
-| `QUEUE_MONITOR_METRICS_TABLE` | `queue_monitor_metrics` | Database table for metrics |
+| `QUEUE_MONITOR_METRICS_TABLE` | `queue_monitor_metrics` | Database table for metrics. The packaged migrations read this, so a custom name is created correctly. |
+| `QUEUE_MONITOR_COMPLETED_JOBS_TABLE` | `queue_monitor_completed_jobs` | Database table for per-run completed job records. Also read by the migrations. |
 | `QUEUE_MONITOR_METRICS_RETENTION_DAYS` | `30` | Days to retain metrics |
 | `QUEUE_MONITOR_METRICS_REFRESH_INTERVAL` | `30` | Metrics chart refresh interval in seconds |
 | `QUEUE_MONITOR_FAILED_JOBS_TABLE` | `failed_jobs` | Unused. Failed jobs are read through Laravel's failer, see [Which storage backs each number](#which-storage-backs-each-number) |

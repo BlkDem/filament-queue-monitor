@@ -2,15 +2,16 @@
 
 return [
 
-    'enabled' => true,
+    'enabled' => env('QUEUE_MONITOR_ENABLED', true),
 
     'driver' => env('QUEUE_MONITOR_DRIVER'),
 
-    'refresh_interval' => 10,
+    'refresh_interval' => env('QUEUE_MONITOR_REFRESH_INTERVAL', 10),
 
     'metrics' => [
         'enabled' => env('QUEUE_MONITOR_METRICS_ENABLED', true),
         'table' => env('QUEUE_MONITOR_METRICS_TABLE', 'queue_monitor_metrics'),
+        'table_completed_jobs' => env('QUEUE_MONITOR_COMPLETED_JOBS_TABLE', 'queue_monitor_completed_jobs'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
     ],

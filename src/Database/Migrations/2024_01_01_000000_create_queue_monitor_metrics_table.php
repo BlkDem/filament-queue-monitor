@@ -6,9 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Read from config rather than hardcoded, so a configured table name is
+     * the one the migration creates. The two had to agree.
+     */
+    protected function table(): string
+    {
+        return (string) config('filament-queue-monitor.metrics.table', 'queue_monitor_metrics');
+    }
+
     public function up(): void
     {
-        Schema::create('queue_monitor_metrics', function (Blueprint $table) {
+        $tableName = $this->table();
+
+        Schema::create($tableName, function (Blueprint $table) use ($tableName) {
             $table->id();
             $table->string('connection')->index();
             $table->string('queue')->index();
@@ -19,12 +30,19 @@ return new class extends Migration
             $table->float('max_runtime', precision: 5)->nullable();
             $table->timestamps();
 
-            $table->unique(['connection', 'queue', 'period']);
+            // Derived from the table name: index names are global per database,
+            // so a fixed name collides once the table is renamed.
+            $table->unique(
+                ['connection', 'queue', 'period'],
+                strlen($tableName.'_connection_queue_period_unique') > 60
+                    ? substr($tableName, 0, 30).'_connection_queue_period_unique'
+                    : $tableName.'_connection_queue_period_unique',
+            );
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('queue_monitor_metrics');
+        Schema::dropIfExists($this->table());
     }
 };

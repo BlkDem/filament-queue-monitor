@@ -21,8 +21,7 @@ class CompletedJobsStorage
 
     public function __construct()
     {
-        $this->table = config('filament-queue-monitor.metrics.table_completed_jobs', 'queue_monitor_completed_jobs')
-            ?: 'queue_monitor_completed_jobs';
+        $this->table = (string) config('filament-queue-monitor.metrics.table_completed_jobs', 'queue_monitor_completed_jobs');
     }
 
     public function isEnabled(): bool

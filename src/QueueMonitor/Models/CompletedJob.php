@@ -15,7 +15,6 @@ class CompletedJob extends Model
 
     public function getTable(): string
     {
-        return config('filament-queue-monitor.metrics.table_completed_jobs', 'queue_monitor_completed_jobs')
-            ?: 'queue_monitor_completed_jobs';
+        return (string) config('filament-queue-monitor.metrics.table_completed_jobs', 'queue_monitor_completed_jobs');
     }
 }

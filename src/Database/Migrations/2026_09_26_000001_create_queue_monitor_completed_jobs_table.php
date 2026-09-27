@@ -6,15 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    protected string $table = 'queue_monitor_completed_jobs';
+    protected function table(): string
+    {
+        return (string) config('filament-queue-monitor.metrics.table_completed_jobs', 'queue_monitor_completed_jobs');
+    }
 
     public function up(): void
     {
-        if (Schema::hasTable($this->table)) {
+        if (Schema::hasTable($this->table())) {
             return;
         }
 
-        Schema::create($this->table, function (Blueprint $table) {
+        $tableName = $this->table();
+
+        Schema::create($tableName, function (Blueprint $table) use ($tableName) {
             $table->id();
 
             // Queue connection the job ran on, so a driver switch does not
@@ -32,12 +37,25 @@ return new class extends Migration
             $table->timestamps();
 
             // Listing one class newest first, which is what the drill-down does.
-            $table->index(['job', 'finished_at'], 'queue_monitor_completed_job_finished_idx');
+            // Named after the table so a configured table name does not collide
+            // with the default one, and kept inside the 64 character limit.
+            $table->index(['job', 'finished_at'], $this->indexName($tableName, 'finished_idx'));
         });
+    }
+
+    /**
+     * Index names are global per database, so a fixed name breaks as soon as
+     * the table is renamed.
+     */
+    protected function indexName(string $table, string $suffix): string
+    {
+        $name = $table.'_'.$suffix;
+
+        return strlen($name) > 60 ? substr($table, 0, 60 - strlen($suffix) - 1).'_'.$suffix : $name;
     }
 
     public function down(): void
     {
-        Schema::dropIfExists($this->table);
+        Schema::dropIfExists($this->table());
     }
 };
