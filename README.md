@@ -46,6 +46,7 @@ return [
         'table_completed_jobs' => env('QUEUE_MONITOR_COMPLETED_JOBS_TABLE', 'queue_monitor_completed_jobs'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
+        'auto_prune' => env('QUEUE_MONITOR_AUTO_PRUNE', true),
     ],
 
     'navigation' => [
@@ -86,7 +87,8 @@ return [
 | `QUEUE_MONITOR_METRICS_ENABLED` | `true` | Enable metrics collection |
 | `QUEUE_MONITOR_METRICS_TABLE` | `queue_monitor_metrics` | Database table for metrics. The packaged migrations read this, so a custom name is created correctly. |
 | `QUEUE_MONITOR_COMPLETED_JOBS_TABLE` | `queue_monitor_completed_jobs` | Database table for per-run completed job records. Also read by the migrations. |
-| `QUEUE_MONITOR_METRICS_RETENTION_DAYS` | `30` | Days to retain metrics |
+| `QUEUE_MONITOR_METRICS_RETENTION_DAYS` | `30` | Days to retain metrics and completed job records |
+| `QUEUE_MONITOR_AUTO_PRUNE` | `true` | Run `queue-monitor:prune` daily. Set to `false` if you schedule it yourself. |
 | `QUEUE_MONITOR_METRICS_REFRESH_INTERVAL` | `30` | Metrics chart refresh interval in seconds |
 | `QUEUE_MONITOR_FAILED_JOBS_TABLE` | `failed_jobs` | Unused. Failed jobs are read through Laravel's failer, see [Which storage backs each number](#which-storage-backs-each-number) |
 | `QUEUE_MONITOR_FAILED_JOBS_DATABASE` | `null` | Unused, same as above |
@@ -190,7 +192,13 @@ php artisan queue-monitor:prune
 
 ## Maintenance
 
-The `queue-monitor:prune` command deletes metrics older than the configured `retention_days`. Schedule it in your kernel:
+The `queue-monitor:prune` command deletes metrics and completed job records older than the configured `retention_days`. The completed jobs table keeps a full job payload per run, so it only grows until something prunes it.
+
+The package schedules this command daily for you. If you would rather schedule it yourself, turn the automatic one off first, or it runs twice:
+
+```dotenv
+QUEUE_MONITOR_AUTO_PRUNE=false
+```
 
 ```php
 $schedule->command('queue-monitor:prune')->daily();

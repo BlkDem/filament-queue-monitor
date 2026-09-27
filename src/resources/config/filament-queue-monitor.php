@@ -14,6 +14,11 @@ return [
         'table_completed_jobs' => env('QUEUE_MONITOR_COMPLETED_JOBS_TABLE', 'queue_monitor_completed_jobs'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
+
+        // Runs queue-monitor:prune daily. The completed jobs table keeps full
+        // job payloads, so without this it only grows. Turn this off if you
+        // schedule the command yourself, or you will run it twice.
+        'auto_prune' => env('QUEUE_MONITOR_AUTO_PRUNE', true),
     ],
 
     'navigation' => [

@@ -2,6 +2,7 @@
 
 namespace BlkDem\FilamentQueueMonitor;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
@@ -44,6 +45,7 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
         );
 
         $this->registerViewComponents();
+        $this->registerPruneSchedule();
 
         if (config('filament-queue-monitor.enabled', true)) {
             $this->loadMigrationsFrom(__DIR__ . '/Database/Migrations');
@@ -74,6 +76,27 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
     protected function registerViewComponents(): void
     {
         Blade::component('filament-queue-monitor::pages.partials.page-shell', 'page-shell');
+    }
+
+    /**
+     * The completed jobs table stores a full payload per run, so it only
+     * grows until something prunes it. Registered through the container so the
+     * command is only added when the scheduler itself is being built, not on
+     * every request.
+     */
+    protected function registerPruneSchedule(): void
+    {
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+            // Read at resolution time rather than at boot, so the setting is
+            // honoured whenever it is evaluated.
+            if (! config('filament-queue-monitor.metrics.auto_prune', true)) {
+                return;
+            }
+
+            $schedule->command('queue-monitor:prune')
+                ->daily()
+                ->withoutOverlapping();
+        });
     }
 
     protected function registerManager(): void
