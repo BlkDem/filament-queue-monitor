@@ -128,31 +128,21 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         $stats = $this->stats($queue);
         $redis = $this->redis();
         $queueKey = $this->getQueueKey($queue);
+
+        // Newest outstanding job, not the oldest: the database driver reads the
+        // highest id, so both drivers have to mean the same thing by last
+        // activity. The queue is a FIFO list, so the newest is the last entry.
         $pendingCreatedAt = null;
-        $pendingPayload = $redis->lindex($queueKey, 0);
+        $pendingPayload = $redis->lindex($queueKey, -1);
 
         if (is_string($pendingPayload) && $pendingPayload !== '') {
             $pending = $this->safeJsonDecode($pendingPayload);
             $pendingCreatedAt = $this->timestampToCarbon($pending['createdAt'] ?? $pending['pushedAt'] ?? null);
         }
 
-        $reserved = $redis->zrange($queueKey.':reserved', 0, 0, true);
-        $reservedAt = null;
-
-        foreach ($this->scoredEntries($reserved) as [, $score]) {
-            $reservedAt = $this->timestampToCarbon($score);
-
-            break;
-        }
-
-        $delayed = $redis->zrange($queueKey.':delayed', 0, 0, true);
-        $delayedAt = null;
-
-        foreach ($this->scoredEntries($delayed) as [, $score]) {
-            $delayedAt = $this->timestampToCarbon($score);
-
-            break;
-        }
+        // Both sets are scored by timestamp, so the newest is the highest score.
+        $reservedAt = $this->newestScore($redis, $queueKey.':reserved');
+        $delayedAt = $this->newestScore($redis, $queueKey.':delayed');
 
         $lastActivityAt = null;
 
@@ -160,6 +150,10 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
             if ($activityAt instanceof Carbon && ($lastActivityAt === null || $activityAt->greaterThan($lastActivityAt))) {
                 $lastActivityAt = $activityAt;
             }
+        }
+
+        if ($stats->failed > 0) {
+            $lastActivityAt = $lastActivityAt ?? Carbon::now();
         }
 
         return new QueueInfo(
@@ -172,6 +166,20 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
             total: $stats->total,
             lastActivityAt: $lastActivityAt,
         );
+    }
+
+    protected function newestScore(mixed $redis, string $key): ?Carbon
+    {
+        $entries = $this->scoredEntries($redis->zrange($key, -1, -1, true));
+        $newest = null;
+
+        foreach ($entries as [, $score]) {
+            $newest = $this->timestampToCarbon($score);
+
+            break;
+        }
+
+        return $newest;
     }
 
     public function failedJobs(): array

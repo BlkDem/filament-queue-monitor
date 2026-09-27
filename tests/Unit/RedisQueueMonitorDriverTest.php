@@ -299,4 +299,51 @@ describe('RedisQueueMonitorDriver', function () {
 
         expect($driver->stuckJobsCount(12))->toBe(1);
     });
+
+    it('reports the newest outstanding job as the last activity', function () {
+        $oldest = now()->subHours(6);
+        $newest = now()->subMinutes(2);
+
+        // Pushed oldest first, so the head of the list is the oldest job.
+        Redis::connection()->rpush('queues:default', json_encode([
+            'uuid' => 'old',
+            'job' => 'TestJob',
+            'queue' => 'default',
+            'attempts' => 1,
+            'createdAt' => $oldest->timestamp,
+            'data' => ['commandName' => 'TestJob'],
+        ]));
+        Redis::connection()->rpush('queues:default', json_encode([
+            'uuid' => 'new',
+            'job' => 'TestJob',
+            'queue' => 'default',
+            'attempts' => 1,
+            'createdAt' => $newest->timestamp,
+            'data' => ['commandName' => 'TestJob'],
+        ]));
+
+        $driver = new RedisQueueMonitorDriver();
+
+        // The driver used to read the head of the list and the lowest scores,
+        // which reported the oldest waiting job while the database driver
+        // reported the newest one for the same workload.
+        expect($driver->info('default')->lastActivityAt?->timestamp)->toBe($newest->timestamp);
+    });
+
+    it('falls back to now when a queue only has failures', function () {
+        config()->set('queue.default', 'redis');
+
+        DB::table('failed_jobs')->insert([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'connection' => 'redis',
+            'queue' => 'default',
+            'payload' => '{}',
+            'exception' => 'boom',
+            'failed_at' => now(),
+        ]);
+
+        $driver = new RedisQueueMonitorDriver();
+
+        expect($driver->info('default')->lastActivityAt)->not->toBeNull();
+    });
 });
