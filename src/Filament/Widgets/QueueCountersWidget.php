@@ -4,6 +4,9 @@ namespace BlkDem\FilamentQueueMonitor\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListCompletedJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListDelayedJobs;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
@@ -82,17 +85,20 @@ class QueueCountersWidget extends BaseWidget
                 ->description(Trans::get('stats.description.awaiting_delayed'))
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('warning')
-                ->chart([$totalDelayed]),
+                ->chart([$totalDelayed])
+                ->url(ListDelayedJobs::getUrl()),
             Stat::make(Trans::get('stats.failed_jobs'), $totalFailed)
                 ->description(Trans::get('stats.description.has_failed'))
                 ->descriptionIcon('heroicon-o-exclamation-triangle')
                 ->color('danger')
-                ->chart([$totalFailed]),
+                ->chart([$totalFailed])
+                ->url(ListFailedJobs::getUrl()),
             Stat::make(Trans::get('stats.processed_last_hour'), $totalProcessed)
                 ->description(Trans::get('stats.description.processed_last_hour'))
                 ->descriptionIcon('heroicon-o-check-circle')
                 ->color('success')
-                ->chart([$totalProcessed]),
+                ->chart([$totalProcessed])
+                ->url(ListCompletedJobs::getUrl()),
         ];
     }
 }

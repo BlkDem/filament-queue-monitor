@@ -4,6 +4,8 @@ namespace BlkDem\FilamentQueueMonitor\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
@@ -109,18 +111,24 @@ class QueueStatsOverviewWidget extends BaseWidget
             Stat::make(Trans::get('stats.queues'), $activeQueuesCount)
                 ->description(Trans::get('stats.description.total_queues', ['count' => $totalConfiguredQueues]))
                 ->icon('heroicon-o-queue-list')
-                ->color('gray'),
+                ->color('gray')
+                ->url(ListQueues::getUrl()),
             Stat::make(Trans::get('stats.pending'), $allStats['pending'])
                 ->description(Trans::get('stats.description.processing_count', ['count' => $allStats['processing']]))
                 ->icon('heroicon-o-clock')
-                ->color($allStats['pending'] > 0 ? 'warning' : 'success'),
+                ->color($allStats['pending'] > 0 ? 'warning' : 'success')
+                ->url(ListJobs::getUrl(['status' => 'pending'])),
             Stat::make(Trans::get('stats.processing'), $allStats['processing'])
                 ->icon('heroicon-o-arrow-path')
-                ->color($allStats['processing'] > 0 ? 'info' : 'success'),
+                ->color($allStats['processing'] > 0 ? 'info' : 'success')
+                ->url(ListJobs::getUrl(['status' => 'processing'])),
+            // A stuck job is a reserved one that has been held past the
+            // threshold, so the processing view is where they can be seen.
             Stat::make(Trans::get('stats.stuck_jobs'), $stuckCount)
                 ->description(Trans::get('stats.description.stuck_jobs', ['hours' => $thresholdHours]))
                 ->icon('heroicon-o-exclamation-triangle')
-                ->color($stuckCount > 0 ? 'danger' : 'success'),
+                ->color($stuckCount > 0 ? 'danger' : 'success')
+                ->url(ListJobs::getUrl(['status' => 'processing'])),
         ];
     }
 }

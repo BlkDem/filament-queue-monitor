@@ -13,7 +13,9 @@ use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
+use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueCountersWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\FailedJob as QueueMonitorFailedJob;
@@ -834,3 +836,49 @@ function insertSmokeFailedJob(
 
     return $uuid;
 }
+it('links every dashboard counter to the page that explains it', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+    config()->set('filament-queue-monitor.refresh_interval', 0);
+
+    // getUrl() resolves through the panel, so the counters need one bound.
+    bindTestFilamentManager([
+        Dashboard::class,
+        ListQueues::class,
+        ListJobs::class,
+        \BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListDelayedJobs::class,
+        \BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs::class,
+        \BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListCompletedJobs::class,
+    ]);
+
+    $statsOf = function (string $class): array {
+        $widget = new $class();
+        $stats = \Closure::bind(
+            fn () => $this->getStats(),
+            $widget,
+            $class,
+        )();
+
+        return collect($stats)->mapWithKeys(fn (Stat $stat): array => [
+            $stat->getLabel() => $stat->getUrl(),
+        ])->all();
+    };
+
+    $overview = $statsOf(QueueStatsOverviewWidget::class);
+    $counters = $statsOf(QueueCountersWidget::class);
+
+    $urls = array_merge(array_values($overview), array_values($counters));
+
+    // A counter that is not a link answers a question with a number and
+    // leaves the reader stuck on the dashboard.
+    expect($urls)->not->toBeEmpty()
+        ->and(array_filter($urls, fn ($url): bool => ! filled($url)))->toBe([]);
+
+    $joined = implode(' ', array_map('strval', $urls));
+
+    expect($joined)->toContain('queue-monitor/queues')
+        ->toContain('queue-monitor/jobs?status=pending')
+        ->toContain('queue-monitor/jobs?status=processing')
+        ->toContain('queue-monitor/delayed-jobs')
+        ->toContain('queue-monitor/failed-jobs')
+        ->toContain('queue-monitor/completed-jobs');
+});
