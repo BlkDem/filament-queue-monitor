@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Dashboard;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ListFailedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
+use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListDelayedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
@@ -877,11 +878,17 @@ it('links every dashboard counter to the page that explains it', function () {
     $joined = implode(' ', array_map('strval', $urls));
 
     expect($joined)->toContain('queue-monitor/queues')
-        ->toContain('queue-monitor/jobs?status=pending')
-        ->toContain('queue-monitor/jobs?status=processing')
         ->toContain('queue-monitor/delayed-jobs')
         ->toContain('queue-monitor/failed-jobs')
-        ->toContain('queue-monitor/completed-jobs');
+        ->toContain('queue-monitor/completed-jobs')
+        ->toContain('queue-monitor/jobs');
+
+    // No counter may link with a table filter in the query. Filament 3.3
+    // gives tableFilters no #[Url] attribute, so a ?status= link is dropped
+    // on the first render and lands on the unfiltered list, which is a link
+    // that quietly says something other than it appears to.
+    expect($urls)->not->toContain('queue-monitor/jobs?status=pending')
+        ->and($urls)->not->toContain('queue-monitor/jobs?status=processing');
 });
 
 it('separates active queues from idle ones in the queues tile', function () {
@@ -943,4 +950,71 @@ it('separates active queues from idle ones in the queues tile', function () {
             'total' => 2,
             'inactive' => 0,
         ]));
+});
+
+it('lists reserved jobs on the jobs page', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+
+    DB::table('jobs')->insert([
+        [
+            'queue' => 'emails',
+            'payload' => json_encode(['displayName' => 'App\\Jobs\\Waiting', 'data' => []]),
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => now()->timestamp,
+            'created_at' => now()->timestamp,
+        ],
+        [
+            'queue' => 'emails',
+            // reserved_at set is what makes a job processing, and the page
+            // used to read pendingJobs() only, so this row never appeared and
+            // the status column could only ever say "pending".
+            'payload' => json_encode(['displayName' => 'App\\Jobs\\Running', 'data' => []]),
+            'attempts' => 1,
+            'reserved_at' => now()->timestamp,
+            'available_at' => now()->timestamp,
+            'created_at' => now()->timestamp,
+        ],
+    ]);
+
+    $page = new ListJobs();
+    $page->bootedInteractsWithTable();
+    $records = $page->getTableRecords()->getCollection();
+
+    $statuses = $records->mapWithKeys(fn ($record): array => [$record->job => $record->status])->all();
+
+    expect($statuses)->toHaveCount(2)
+        ->and($statuses)->toHaveKey('App\\Jobs\\Waiting', 'pending')
+        ->and($statuses)->toHaveKey('App\\Jobs\\Running', 'processing');
+
+    $page->tableFilters = ['status' => ['value' => 'processing']];
+    $page->flushCachedTableRecords();
+
+    expect($page->getTableRecords()->getCollection()->pluck('job')->all())
+        ->toBe(['App\\Jobs\\Running']);
+});
+
+it('keeps a resolved status instead of recomputing it from column names', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+
+    DB::table('jobs')->insert([
+        [
+            'queue' => 'reports',
+            'payload' => json_encode(['displayName' => 'App\\Jobs\\Later', 'data' => []]),
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => now()->addHour()->timestamp,
+            'created_at' => now()->timestamp,
+        ],
+    ]);
+
+    $page = new ListDelayedJobs();
+    $page->bootedInteractsWithTable();
+    $records = $page->getTableRecords()->getCollection();
+
+    // The accessor used to answer "pending" for every record: the driver hands
+    // over availableAt, the accessor looked for available_at, and no record
+    // carries reserved_at at all.
+    expect($records)->toHaveCount(1)
+        ->and($records->first()->status)->toBe('delayed');
 });

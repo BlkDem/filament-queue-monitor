@@ -183,6 +183,7 @@ return [
         'pending' => 'В ожидании',
         'processing' => 'В обработке',
         'unknown' => 'Неизвестно',
+        'delayed' => 'Отложено',
     ],
 
     'delayed' => [

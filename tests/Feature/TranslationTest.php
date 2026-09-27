@@ -252,13 +252,21 @@ it('has no translation key that nothing reads', function () {
     }
 
     // These are read through the Trans helpers rather than a literal key.
-    $throughHelpers = ['navigation.group', 'status.unknown', 'delayed.minutes', 'delayed.hours'];
+    $throughHelpers = ['navigation.group', 'delayed.minutes', 'delayed.hours'];
 
     $unused = array_values(array_filter(
         $english,
-        fn (string $key): bool => ! in_array($key, $throughHelpers, true)
-            && ! str_contains($code, "'".$key."'")
-            && ! str_contains($code, '"'.$key.'"'),
+        function (string $key) use ($throughHelpers, $code): bool {
+            // Trans::status() builds "status.{$value}" at runtime, so every
+            // status value is read without the key appearing anywhere.
+            if (str_starts_with($key, 'status.')) {
+                return false;
+            }
+
+            return ! in_array($key, $throughHelpers, true)
+                && ! str_contains($code, "'".$key."'")
+                && ! str_contains($code, '"'.$key.'"');
+        },
     ));
 
     // An unused key is either a leftover or a feature that was wired up

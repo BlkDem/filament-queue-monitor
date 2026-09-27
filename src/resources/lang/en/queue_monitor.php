@@ -183,6 +183,7 @@ return [
         'pending' => 'Pending',
         'processing' => 'Processing',
         'unknown' => 'Unknown',
+        'delayed' => 'Delayed',
     ],
 
     'delayed' => [

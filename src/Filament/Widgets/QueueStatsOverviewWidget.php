@@ -100,18 +100,18 @@ class QueueStatsOverviewWidget extends BaseWidget
                 ->description(Trans::get('stats.description.processing_count', ['count' => $allStats['processing']]))
                 ->icon('heroicon-o-clock')
                 ->color($allStats['pending'] > 0 ? 'warning' : 'success')
-                ->url(ListJobs::getUrl(['status' => 'pending'])),
+                ->url(ListJobs::getUrl()),
             Stat::make(Trans::get('stats.processing'), $allStats['processing'])
                 ->icon('heroicon-o-arrow-path')
                 ->color($allStats['processing'] > 0 ? 'info' : 'success')
-                ->url(ListJobs::getUrl(['status' => 'processing'])),
+                ->url(ListJobs::getUrl()),
             // A stuck job is a reserved one that has been held past the
-            // threshold, so the processing view is where they can be seen.
+            // threshold, so the jobs page is where they can be seen.
             Stat::make(Trans::get('stats.stuck_jobs'), $stuckCount)
                 ->description(Trans::get('stats.description.stuck_jobs', ['hours' => $thresholdHours]))
                 ->icon('heroicon-o-exclamation-triangle')
                 ->color($stuckCount > 0 ? 'danger' : 'success')
-                ->url(ListJobs::getUrl(['status' => 'processing'])),
+                ->url(ListJobs::getUrl()),
         ];
     }
 

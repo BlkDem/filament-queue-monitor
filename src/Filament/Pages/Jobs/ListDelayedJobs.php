@@ -76,7 +76,12 @@ class ListDelayedJobs extends BaseQueueTablePage
     {
         $payloadData = $job->resolvePayloadData();
         $jobClass = $job->resolveJobClass() ?? $payloadData['displayName'] ?? $payloadData['job'] ?? Trans::get('jobs.unknown');
-        $status = $job->reservedAt !== null ? 'processing' : 'pending';
+
+        // Everything on this page is waiting for its turn: both drivers select
+        // it with reserved_at null and available_at in the future. Calling it
+        // "pending" repeated the same word as the jobs page and said nothing
+        // about why it is not there.
+        $status = 'delayed';
 
         $delayedMinutes = 0;
 

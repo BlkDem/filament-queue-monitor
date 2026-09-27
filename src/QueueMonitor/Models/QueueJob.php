@@ -52,6 +52,15 @@ class QueueJob extends Model
 
     public function getStatusAttribute(): string
     {
+        // The driver already resolved the status, and a record it built
+        // carries no reserved_at while its timestamp columns are camelCase.
+        // Recomputing from the column names therefore always answered
+        // "pending", for the redis driver too, and hid the processing half of
+        // the jobs page. Only fall back to the columns for a real jobs row.
+        if (isset($this->attributes['status'])) {
+            return (string) $this->attributes['status'];
+        }
+
         if ($this->reserved_at !== null) {
             return 'processing';
         }

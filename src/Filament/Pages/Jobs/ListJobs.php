@@ -51,25 +51,43 @@ class ListJobs extends BaseQueueTablePage
     protected function resolveAllRecords(): array
     {
         $driver = $this->getDriver();
-        $queues = $driver->getQueues();
 
         $allRecords = [];
-        $queue = $this->queue;
+        $names = [];
 
-        if ($queue) {
-            $jobs = $driver->pendingJobs($queue);
+        if ($this->queue) {
+            $names[] = $this->queue;
         } else {
-            $jobs = [];
-            foreach ($queues as $queueInfo) {
-                $jobs = array_merge($jobs, $driver->pendingJobs($queueInfo->name));
+            foreach ($driver->getQueues() as $queueInfo) {
+                $names[] = $queueInfo->name;
             }
         }
 
-        foreach ($jobs as $job) {
-            $allRecords[] = $this->jobInfoToArray($job);
+        // Both halves of the page. Reserved jobs live in their own set on
+        // redis and in reserved_at on the database driver, so reading only
+        // pendingJobs left the processing half of the page permanently empty
+        // and made the status column and its processing filter dead.
+        foreach ($names as $name) {
+            foreach ([$driver->processingJobs($name), $driver->pendingJobs($name)] as $half) {
+                foreach ($this->toArray($half) as $job) {
+                    $allRecords[] = $this->jobInfoToArray($job);
+                }
+            }
         }
 
         return $allRecords;
+    }
+
+    /**
+     * The driver contract says iterable, so a generator cannot be unpacked
+     * with a spread.
+     *
+     * @param  iterable<JobInfo>  $jobs
+     * @return list<JobInfo>
+     */
+    protected function toArray(iterable $jobs): array
+    {
+        return is_array($jobs) ? $jobs : iterator_to_array($jobs, false);
     }
 
     protected function jobInfoToArray(JobInfo $job): array
