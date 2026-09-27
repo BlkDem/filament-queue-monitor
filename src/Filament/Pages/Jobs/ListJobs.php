@@ -162,6 +162,8 @@ class ListJobs extends BaseQueueTablePage
                     ->searchable(),
             ])
             ->searchPlaceholder(Trans::get('jobs.search_placeholder'))
+            ->emptyStateHeading(Trans::get('jobs.title'))
+            ->emptyStateDescription(Trans::get('jobs.empty'))
             ->defaultSort('createdAt', 'desc')
             ->paginated([10, 25, 50]);
 

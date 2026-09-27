@@ -95,6 +95,8 @@ class ListQueues extends BaseQueueTablePage
             ])
             ->recordUrl(fn ($record) => is_array($record) ? null : ViewQueue::getUrl(['queue' => $record->queue]))
             ->searchPlaceholder(Trans::get('queues.search_placeholder'))
+            ->emptyStateHeading(Trans::get('queues.title'))
+            ->emptyStateDescription(Trans::get('queues.empty'))
             ->defaultSort('queue', 'asc')
             ->paginated([10, 25, 50]);
 

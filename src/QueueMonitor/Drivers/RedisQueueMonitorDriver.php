@@ -36,13 +36,27 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         $names = $this->knownQueues();
 
         if ($names === []) {
-            return [];
+            // Same fallback as the database driver. Scanning redis only finds
+            // queues that have held a job, so an idle app would otherwise show
+            // an empty page and look broken.
+            $names = [$this->fallbackQueueName()];
         }
 
         return array_values(array_map(
             fn (string $queue): QueueInfo => $this->info($queue),
             $names,
         ));
+    }
+
+    protected function fallbackQueueName(): string
+    {
+        // The monitored queue connection, not $this->connection, which is the
+        // redis connection name.
+        $queueConnection = config('queue.default', 'redis');
+        $configured = config("queue.connections.{$queueConnection}.queue", 'default');
+        $configured = is_array($configured) ? ($configured[0] ?? 'default') : $configured;
+
+        return is_string($configured) && $configured !== '' ? $configured : 'default';
     }
 
     public function stats(string $queue): QueueStats
@@ -57,7 +71,6 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
             pending: $pending,
             processing: $processing,
             delayed: $delayed,
-            completed: 0,
             failed: $this->countFailedJobsForQueue($queue),
             total: $pending + $processing + $delayed,
         );
@@ -161,7 +174,6 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
             pending: $stats->pending,
             processing: $stats->processing,
             delayed: $stats->delayed,
-            completed: $stats->completed,
             failed: $stats->failed,
             total: $stats->total,
             lastActivityAt: $lastActivityAt,

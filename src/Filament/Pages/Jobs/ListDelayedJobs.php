@@ -195,6 +195,8 @@ class ListDelayedJobs extends BaseQueueTablePage
                     ]),
             ])
             ->searchPlaceholder(Trans::get('jobs.search_placeholder'))
+            ->emptyStateHeading(Trans::get('delayed_jobs.title'))
+            ->emptyStateDescription(Trans::get('jobs.empty'))
             ->defaultSort('availableAt', 'asc')
             ->paginated([10, 25, 50]);
 

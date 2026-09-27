@@ -92,7 +92,6 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             pending: $pending,
             processing: $reserved,
             delayed: $delayed,
-            completed: 0,
             failed: $failed,
             total: $pending + $delayed + $reserved,
         );
@@ -127,7 +126,6 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             pending: $stats->pending,
             processing: $stats->processing,
             delayed: $stats->delayed,
-            completed: $stats->completed,
             failed: $stats->failed,
             total: $stats->total,
             lastActivityAt: $lastActivityAt,

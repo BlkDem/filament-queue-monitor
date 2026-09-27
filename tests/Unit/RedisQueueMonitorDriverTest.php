@@ -253,10 +253,15 @@ describe('RedisQueueMonitorDriver', function () {
 
         $driver = new RedisQueueMonitorDriver();
 
-        // The queue has no redis keys at all, so summing over getQueues() would
-        // report nothing even though the failer still holds the job. The failure
-        // left over from the previous database connection must not be counted.
-        expect($driver->getQueues())->toBe([])
+        // The queue has no redis keys at all. getQueues() falls back to the
+        // configured queue, as the database driver does, so it reports one
+        // queue with no jobs rather than nothing. Either way summing over it
+        // must not pick up the failure, and the one left over from the previous
+        // database connection must not be counted.
+        $queues = $driver->getQueues();
+
+        expect($queues)->toHaveCount(1)
+            ->and($queues[0]->failed)->toBe(0)
             ->and($driver->failedJobsCount())->toBe(1);
     });
 
@@ -298,6 +303,19 @@ describe('RedisQueueMonitorDriver', function () {
         $driver = new RedisQueueMonitorDriver();
 
         expect($driver->stuckJobsCount(12))->toBe(1);
+    });
+
+    it('falls back to the configured queue when redis holds nothing', function () {
+        $driver = new RedisQueueMonitorDriver();
+
+        // The database driver reports one empty queue in this state so the
+        // queues page is not blank on an idle app. Redis used to report none,
+        // which looked like a broken plugin.
+        $queues = $driver->getQueues();
+
+        expect($queues)->toHaveCount(1)
+            ->and($queues[0]->name)->toBe('default')
+            ->and($queues[0]->total)->toBe(0);
     });
 
     it('reports the newest outstanding job as the last activity', function () {
