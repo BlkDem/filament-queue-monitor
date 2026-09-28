@@ -45,6 +45,7 @@ return [
         'table' => env('QUEUE_MONITOR_METRICS_TABLE', 'queue_monitor_metrics'),
         'table_completed_jobs' => env('QUEUE_MONITOR_COMPLETED_JOBS_TABLE', 'queue_monitor_completed_jobs'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
+        'store_payload' => env('QUEUE_MONITOR_STORE_PAYLOAD', true),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
         'auto_prune' => env('QUEUE_MONITOR_AUTO_PRUNE', true),
     ],
@@ -89,6 +90,7 @@ return [
 | `QUEUE_MONITOR_COMPLETED_JOBS_TABLE` | `queue_monitor_completed_jobs` | Database table for per-run completed job records. Also read by the migrations. |
 | `QUEUE_MONITOR_METRICS_RETENTION_DAYS` | `30` | Days to retain metrics and completed job records |
 | `QUEUE_MONITOR_AUTO_PRUNE` | `true` | Run `queue-monitor:prune` daily. Set to `false` if you schedule it yourself. |
+| `QUEUE_MONITOR_STORE_PAYLOAD` | `true` | Keep the full job payload on each completed run. Each one is roughly 5 KB, so a busy application writes its whole queue volume into your database. Set to `false` to keep the run records without the payload. |
 | `QUEUE_MONITOR_METRICS_REFRESH_INTERVAL` | `30` | Metrics chart refresh interval in seconds |
 | `QUEUE_MONITOR_FAILED_JOBS_TABLE` | `failed_jobs` | Unused. Failed jobs are read through Laravel's failer, see [Which storage backs each number](#which-storage-backs-each-number) |
 | `QUEUE_MONITOR_FAILED_JOBS_DATABASE` | `null` | Unused, same as above |

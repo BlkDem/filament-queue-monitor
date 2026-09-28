@@ -15,7 +15,9 @@ use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueCountersWidget;
+
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\CompletedJobsStorage;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
@@ -1054,4 +1056,28 @@ it('asks the driver for the queue list once per request', function () {
     // A long-lived worker has to be able to drop it, or it would read a
     // queue list that froze when the process started.
     expect($queries)->toBeGreaterThan($after);
+});
+
+it('can record completed runs without their payload', function () {
+    config()->set('filament-queue-monitor.metrics.store_payload', false);
+
+    $storage = new CompletedJobsStorage();
+
+    $storage->record('redis', 'emails', 'App\\Jobs\\SendNotificationJob', 'uuid-1', 0.25, null, '{"big":"payload"}');
+
+    $row = DB::table('queue_monitor_completed_jobs')->where('uuid', 'uuid-1')->first();
+
+    // The run is still recorded, only the payload is dropped. That payload is
+    // roughly 5 KB and it used to be written on every single processed job.
+    expect($row)->not->toBeNull()
+        ->and($row->job)->toBe('App\\Jobs\\SendNotificationJob')
+        ->and($row->runtime)->toBe(0.25)
+        ->and($row->payload)->toBeNull();
+
+    config()->set('filament-queue-monitor.metrics.store_payload', true);
+
+    $storage->record('redis', 'emails', 'App\\Jobs\\SendNotificationJob', 'uuid-2', 0.25, null, '{"big":"payload"}');
+
+    expect(DB::table('queue_monitor_completed_jobs')->where('uuid', 'uuid-2')->first()->payload)
+        ->toBe('{"big":"payload"}');
 });

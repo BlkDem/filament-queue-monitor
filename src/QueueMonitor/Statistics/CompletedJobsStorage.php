@@ -40,6 +40,23 @@ class CompletedJobsStorage
         return $this->table;
     }
 
+    /**
+     * The payload is the expensive part of a run row: about 5 KB each, so a
+     * busy application mirrors its whole queue volume into the database. The
+     * run itself is still recorded when this is off, only the payload is
+     * dropped, which is what the run pages fall back to.
+     */
+    public function storesPayload(): bool
+    {
+        $enabled = config('filament-queue-monitor.metrics.store_payload', true);
+
+        if (is_string($enabled)) {
+            return ! in_array(strtolower($enabled), ['0', 'false', 'no', 'off'], true);
+        }
+
+        return (bool) $enabled;
+    }
+
     public function tableExists(): bool
     {
         return $this->cachedTableExists ??= Schema::hasTable($this->table);
@@ -65,7 +82,7 @@ class CompletedJobsStorage
             'queue' => $queue !== '' ? $queue : 'default',
             'job' => $job !== '' ? $job : 'unknown',
             'uuid' => $uuid,
-            'payload' => $payload,
+            'payload' => $this->storesPayload() ? $payload : null,
             'runtime' => $runtime,
             'finished_at' => $finishedAt?->toDateTimeString() ?? $now->toDateTimeString(),
             'created_at' => $now,

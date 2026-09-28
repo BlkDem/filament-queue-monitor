@@ -7,13 +7,21 @@ use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Jobs\Job;
-use Illuminate\Support\Facades\Cache;
 use Throwable;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\CompletedJobsStorage;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
 
 class RecordQueueMetrics
 {
+    /**
+     * Start time per job object. Static because the container hands out a new
+     * listener per event, and a WeakMap so a job that is never finished does
+     * not leave anything behind.
+     *
+     * @var \WeakMap<object, float>
+     */
+    protected static \WeakMap $startedAt;
+
     protected MetricsStorage $storage;
 
     protected CompletedJobsStorage $completed;
@@ -22,6 +30,8 @@ class RecordQueueMetrics
 
     public function __construct(MetricsStorage $storage, ?CompletedJobsStorage $completed = null)
     {
+        self::$startedAt ??= new \WeakMap();
+
         $this->storage = $storage;
         $this->completed = $completed ?? app(CompletedJobsStorage::class);
         $this->isEnabled = (bool) config('filament-queue-monitor.enabled', true)
@@ -35,9 +45,11 @@ class RecordQueueMetrics
             return;
         }
 
-        $key = $this->getStartKey($event->connectionName, $event->job);
-        $ttl = max(3600, (int) config("queue.connections.{$event->connectionName}.retry_after", 3600));
-        Cache::put($key, microtime(true), $ttl);
+        // Held against the job object itself rather than in the cache. The
+        // cache cost the host application three queries per job whenever
+        // CACHE_DRIVER=database, and a WeakMap entry disappears with the job
+        // instead of lingering for a retry_after window.
+        self::$startedAt[$event->job] = microtime(true);
     }
 
     public function handleProcessed(JobProcessed $event): void
@@ -46,8 +58,9 @@ class RecordQueueMetrics
             return;
         }
 
-        $startKey = $this->getStartKey($event->connectionName, $event->job);
-        $startedAt = Cache::pull($startKey);
+        $startedAt = self::$startedAt[$event->job] ?? null;
+        unset(self::$startedAt[$event->job]);
+
         $runtime = $startedAt !== null ? (float) (microtime(true) - $startedAt) : null;
 
         $period = now()->startOfMinute()->format('Y-m-d H:i:s');
@@ -81,8 +94,9 @@ class RecordQueueMetrics
             return;
         }
 
-        $startKey = $this->getStartKey($event->connectionName, $event->job);
-        $startedAt = Cache::pull($startKey);
+        $startedAt = self::$startedAt[$event->job] ?? null;
+        unset(self::$startedAt[$event->job]);
+
         $runtime = $startedAt !== null ? (float) (microtime(true) - $startedAt) : null;
 
         $period = now()->startOfMinute()->format('Y-m-d H:i:s');
@@ -102,25 +116,6 @@ class RecordQueueMetrics
     {
         // JobExceptionOccurred is fired during processing - the job may be retried.
         // We don't count this as a separate failure here; JobFailed handles that.
-    }
-
-    protected function getStartKey(string $connectionName, Job $job): string
-    {
-        try {
-            $jobId = $job->uuid();
-        } catch (Throwable) {
-            $jobId = null;
-        }
-
-        if ($jobId === null || $jobId === '') {
-            try {
-                $jobId = $job->getJobId();
-            } catch (Throwable) {
-                $jobId = (string) spl_object_id($job);
-            }
-        }
-
-        return 'queue-monitor:start:'.md5($connectionName.':'.(string) $jobId);
     }
 
     /**

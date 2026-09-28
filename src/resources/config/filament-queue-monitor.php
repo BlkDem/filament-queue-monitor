@@ -15,6 +15,12 @@ return [
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
 
+        // A full job payload per run is around 5 KB, so a busy application
+        // writes its own queue traffic back into the database: roughly 40 GB
+        // a month at ten thousand jobs an hour, retained for retention_days.
+        // Turn it off to keep the per-run rows and drop only the payload.
+        'store_payload' => env('QUEUE_MONITOR_STORE_PAYLOAD', true),
+
         // Runs queue-monitor:prune daily. The completed jobs table keeps full
         // job payloads, so without this it only grows. Turn this off if you
         // schedule the command yourself, or you will run it twice.

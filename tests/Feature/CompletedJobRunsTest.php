@@ -67,10 +67,18 @@ it('records one row per processed job alongside the aggregate', function () {
         }
     };
 
-    $started = microtime(true);
-    cache()->put('queue-monitor:start:'.md5('database:run-uuid-1'), $started - 0.5, 60);
+    $listener = new RecordQueueMetrics($storage, $completed);
 
-    (new RecordQueueMetrics($storage, $completed))->handleProcessed(
+    // Both events carry the same job instance, which is what the worker does.
+    // The start time is held against that instance, so a test that only fired
+    // the second event was asserting on a cache key rather than on behaviour.
+    $listener->handleProcessing(
+        new \Illuminate\Queue\Events\JobProcessing('database', $job)
+    );
+
+    usleep(2000);
+
+    $listener->handleProcessed(
         new \Illuminate\Queue\Events\JobProcessed('database', $job)
     );
 
