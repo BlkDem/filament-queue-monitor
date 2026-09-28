@@ -23,6 +23,11 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
 
     protected string $queueConnection;
 
+    /**
+     * @var list<QueueInfo>|null
+     */
+    protected ?array $cachedQueues = null;
+
     public function __construct()
     {
         $queueConnection = config('queue.default', 'database');
@@ -47,6 +52,13 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
 
     public function getQueues(): array
     {
+        // One pass per request, for the same reason as the redis driver: five
+        // widgets ask for this on one dashboard render and each pass costs
+        // three queries plus a failure count per queue.
+        if ($this->cachedQueues !== null) {
+            return $this->cachedQueues;
+        }
+
         $queueNames = $this->database->table($this->table)
             ->distinct()
             ->orderBy('queue', 'asc')
@@ -64,7 +76,16 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             $queues[] = $this->info($configuredQueue ?: 'default');
         }
 
-        return $queues;
+        return $this->cachedQueues = $queues;
+    }
+
+    /**
+     * For a long-lived process such as a queue worker, where a request-scoped
+     * cache would go stale.
+     */
+    public function forgetCachedQueues(): void
+    {
+        $this->cachedQueues = null;
     }
 
     public function stats(string $queue): QueueStats

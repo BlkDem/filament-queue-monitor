@@ -105,11 +105,15 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
             return new QueueMonitorManager($app);
         });
 
-        $this->app->bind(RedisQueueMonitorDriver::class, function () {
+        // Scoped, not bound: the dashboard asks five widgets for the same
+        // queue list in one render, and a fresh instance per resolution threw
+        // that memoisation away. Scoped shares within a request and is flushed
+        // between requests under octane, which is the lifetime the cache needs.
+        $this->app->scoped(RedisQueueMonitorDriver::class, function () {
             return new RedisQueueMonitorDriver();
         });
 
-        $this->app->bind(DatabaseQueueMonitorDriver::class, function () {
+        $this->app->scoped(DatabaseQueueMonitorDriver::class, function () {
             return new DatabaseQueueMonitorDriver();
         });
     }

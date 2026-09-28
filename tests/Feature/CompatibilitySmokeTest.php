@@ -15,6 +15,7 @@ use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueActivityWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\JobBreakdownWidget;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueCountersWidget;
+use BlkDem\FilamentQueueMonitor\QueueMonitor\Drivers\DatabaseQueueMonitorDriver;
 use BlkDem\FilamentQueueMonitor\Filament\Widgets\QueueStatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
@@ -1017,4 +1018,40 @@ it('keeps a resolved status instead of recomputing it from column names', functi
     // carries reserved_at at all.
     expect($records)->toHaveCount(1)
         ->and($records->first()->status)->toBe('delayed');
+});
+
+it('asks the driver for the queue list once per request', function () {
+    config()->set('filament-queue-monitor.driver', 'database');
+
+    DB::table('jobs')->insert([
+        ['queue' => 'emails', 'payload' => json_encode(['displayName' => 'App\Jobs\A', 'data' => []]),
+         'attempts' => 0, 'reserved_at' => null, 'available_at' => now()->timestamp, 'created_at' => now()->timestamp],
+        ['queue' => 'reports', 'payload' => json_encode(['displayName' => 'App\Jobs\B', 'data' => []]),
+         'attempts' => 0, 'reserved_at' => null, 'available_at' => now()->timestamp, 'created_at' => now()->timestamp],
+    ]);
+
+    $driver = new DatabaseQueueMonitorDriver();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void { $queries++; });
+
+    // The dashboard asks five widgets for the same list. Each miss used to
+    // cost three queries per queue plus a failure count per queue, so the
+    // render cost scaled with queues times widgets.
+    $first = $driver->getQueues();
+    $after = $queries;
+
+    $driver->getQueues();
+    $driver->getQueues();
+
+    expect($first)->toHaveCount(2)
+        ->and($queries)->toBe($after);
+
+    $driver->forgetCachedQueues();
+
+    $driver->getQueues();
+
+    // A long-lived worker has to be able to drop it, or it would read a
+    // queue list that froze when the process started.
+    expect($queries)->toBeGreaterThan($after);
 });

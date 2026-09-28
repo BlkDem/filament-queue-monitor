@@ -4,6 +4,20 @@ namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Support;
 
 trait HandlesFailedJobs
 {
+    /**
+     * Per request, keyed by connection and queue. The failer counts hit the
+     * database, and every widget that lists queues asks for a per queue figure,
+     * so without this the same query ran once per widget per queue.
+     *
+     * @var array<string, int>
+     */
+    protected array $failedCountCache = [];
+
+    public function forgetCachedFailedCounts(): void
+    {
+        $this->failedCountCache = [];
+    }
+
     protected function getFailer()
     {
         return app('queue.failer');
@@ -63,42 +77,54 @@ trait HandlesFailedJobs
 
     public function failedJobsCount(?string $connection = null): int
     {
+        $connection ??= $this->monitoredQueueConnection();
+        $key = $connection.'|';
+
+        if (array_key_exists($key, $this->failedCountCache)) {
+            return $this->failedCountCache[$key];
+        }
+
         try {
             $failer = $this->getFailer();
-            $connection ??= $this->monitoredQueueConnection();
 
             if (method_exists($failer, 'count')) {
-                return (int) $failer->count($connection);
+                return $this->failedCountCache[$key] = (int) $failer->count($connection);
             }
 
-            return count(array_filter(
+            return $this->failedCountCache[$key] = count(array_filter(
                 $failer->all() ?? [],
                 fn ($job): bool => $this->failedJobValue($job, 'connection', '') === $connection,
             ));
         } catch (\Throwable) {
-            return 0;
+            return $this->failedCountCache[$key] = 0;
         }
     }
 
     protected function countFailedJobsForQueue(string $queue, ?string $connection = null): int
     {
+        $connection ??= $this->monitoredQueueConnection();
+        $key = $connection.'|'.$queue;
+
+        if (array_key_exists($key, $this->failedCountCache)) {
+            return $this->failedCountCache[$key];
+        }
+
         try {
             $failer = $this->getFailer();
-            $connection ??= $this->monitoredQueueConnection();
 
             if (method_exists($failer, 'count')) {
-                return (int) $failer->count($connection, $queue);
+                return $this->failedCountCache[$key] = (int) $failer->count($connection, $queue);
             }
 
             $all = $failer->all() ?? [];
 
-            return count(array_filter(
+            return $this->failedCountCache[$key] = count(array_filter(
                 $all,
                 fn ($job): bool => $this->failedJobValue($job, 'connection', '') === $connection
                     && $this->failedJobValue($job, 'queue', '') === $queue,
             ));
         } catch (\Throwable) {
-            return 0;
+            return $this->failedCountCache[$key] = 0;
         }
     }
 

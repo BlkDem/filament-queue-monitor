@@ -21,6 +21,11 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
 
     protected ?string $connection;
 
+    /**
+     * @var list<QueueInfo>|null
+     */
+    protected ?array $cachedQueues = null;
+
     public function __construct(
         protected ?RedisFactory $redis = null,
         ?string $connection = null,
@@ -33,6 +38,12 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
 
     public function getQueues(): array
     {
+        // One pass per request. Every widget on the dashboard needs this list,
+        // and each pass costs a scan plus four round trips per queue.
+        if ($this->cachedQueues !== null) {
+            return $this->cachedQueues;
+        }
+
         $names = $this->knownQueues();
 
         if ($names === []) {
@@ -42,10 +53,19 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
             $names = [$this->fallbackQueueName()];
         }
 
-        return array_values(array_map(
+        return $this->cachedQueues = array_values(array_map(
             fn (string $queue): QueueInfo => $this->info($queue),
             $names,
         ));
+    }
+
+    /**
+     * For a long-lived process such as a queue worker, where a request-scoped
+     * cache would go stale.
+     */
+    public function forgetCachedQueues(): void
+    {
+        $this->cachedQueues = null;
     }
 
     protected function fallbackQueueName(): string
