@@ -36,6 +36,21 @@ abstract class BaseQueueTablePage extends Page implements HasTable
         return (bool) config('filament-queue-monitor.navigation.enabled', true);
     }
 
+    /**
+     * Filament's HasTable contract wants a builder, and the table declares one,
+     * but the records do not come from it.
+     *
+     * Every page here resolves its rows from the driver, which is the source of
+     * truth, and filtering, searching, sorting and pagination all happen in
+     * getTableRecords(). Verified: rendering a driver-backed page issues no
+     * query against the jobs table at all.
+     *
+     * That is worth stating, because this builder is the SQL jobs table and a
+     * driver may be watching redis. Anything that is added later and reaches
+     * for the query would silently read a table that is not the data, which is
+     * how the status accessor and the status filter went wrong before. Resolve
+     * through the driver instead.
+     */
     protected function getTableQuery(): Builder | Relation | null
     {
         return QueueJob::query();
