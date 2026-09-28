@@ -213,6 +213,11 @@ abstract class BaseQueueTablePage extends Page implements HasTable
         }, SORT_REGULAR, $direction === 'desc');
     }
 
+    /**
+     * Maps a column to the field it sorts by. Only the delayed page needs it:
+     * it sorts on the numeric minutes rather than on the translated string,
+     * which would order "2 ч" against "10 мин" alphabetically.
+     */
     protected function getSortField(string $column): string
     {
         return $column;

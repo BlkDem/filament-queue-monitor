@@ -98,7 +98,6 @@ class ListDelayedJobs extends BaseQueueTablePage
             'attempts' => $job->attempts,
             'createdAt' => $job->createdAt?->toDateTimeString(),
             'availableAt' => $job->availableAt?->toDateTimeString() ?? $job->createdAt?->toDateTimeString(),
-            'isDelayed' => $job->availableAt && $job->availableAt->gt(now()),
             'status' => $status,
             'delayedDisplay' => Trans::delayedFor($delayedMinutes),
             'delayedMinutes' => $delayedMinutes,

@@ -17,7 +17,7 @@ composer require kilo/filament-queue-monitor
 php artisan queue-monitor:install
 ```
 
-The install command publishes the configuration, migrations and translations, then runs only this package's migration. Register the plugin in a Filament panel:
+The install command publishes the configuration, migrations and translations, then runs the migration. The service provider also registers the packaged migrations, so a plain `php artisan migrate` covers them and you never have to publish anything to get a working install. A published copy is a snapshot for review: edits to it are not what runs, because the registered path is the one `migrate` uses. Register the plugin in a Filament panel:
 
 ```php
 use BlkDem\FilamentQueueMonitor\Filament\FilamentQueueMonitorPlugin;

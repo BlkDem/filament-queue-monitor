@@ -2,7 +2,6 @@
 
 namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Listeners;
 
-use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -110,12 +109,6 @@ class RecordQueueMetrics
             maxRuntime: $runtime,
             job: $this->getJobName($event->job),
         );
-    }
-
-    public function handleExceptionOccurred(JobExceptionOccurred $event): void
-    {
-        // JobExceptionOccurred is fired during processing - the job may be retried.
-        // We don't count this as a separate failure here; JobFailed handles that.
     }
 
     /**

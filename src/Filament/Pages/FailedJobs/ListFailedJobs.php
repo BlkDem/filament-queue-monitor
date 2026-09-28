@@ -228,15 +228,4 @@ class ListFailedJobs extends BaseQueueTablePage
         }
     }
 
-    protected function getSortField(string $column): string
-    {
-        return match ($column) {
-            'id' => 'id',
-            'uuid' => 'uuid',
-            'job' => 'job',
-            'queue' => 'queue',
-            'failedAt' => 'failedAt',
-            default => $column,
-        };
-    }
 }

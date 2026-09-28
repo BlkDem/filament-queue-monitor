@@ -104,7 +104,6 @@ class ListJobs extends BaseQueueTablePage
             'attempts' => $job->attempts,
             'createdAt' => $job->createdAt?->toDateTimeString(),
             'availableAt' => $job->availableAt?->toDateTimeString() ?? $job->createdAt?->toDateTimeString(),
-            'isDelayed' => $job->availableAt && $job->availableAt->gt(now()),
             'status' => $status,
             'payload' => $job->payload,
         ];
@@ -192,18 +191,6 @@ class ListJobs extends BaseQueueTablePage
         return $table;
     }
 
-    protected function getSortField(string $column): string
-    {
-        if ($column === 'job') {
-            return 'job';
-        }
-
-        if ($column === 'createdAt') {
-            return 'createdAt';
-        }
-
-        return $column;
-    }
 
     protected function applyFilterToTableRecords(Collection $records, string $field, array $filter): ?Collection
     {

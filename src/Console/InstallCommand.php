@@ -39,9 +39,12 @@ class InstallCommand extends Command
         ]);
 
         $this->info('Running migrations...');
+
+        // No --path here: the service provider already registers the packaged
+        // migrations, so a plain migrate covers them. Naming the path as well
+        // meant two mechanisms for one set of files, which is what made it
+        // unclear whether an edited published copy would take effect.
         $status = $this->call('migrate', [
-            '--path' => [dirname(__DIR__) . '/Database/Migrations'],
-            '--realpath' => true,
             '--force' => true,
         ]);
 

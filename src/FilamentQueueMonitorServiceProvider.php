@@ -147,10 +147,5 @@ class FilamentQueueMonitorServiceProvider extends ServiceProvider
             \Illuminate\Queue\Events\JobFailed::class,
             [RecordQueueMetrics::class, 'handleFailed']
         );
-
-        $events->listen(
-            \Illuminate\Queue\Events\JobExceptionOccurred::class,
-            [RecordQueueMetrics::class, 'handleExceptionOccurred']
-        );
     }
 }
