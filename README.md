@@ -13,7 +13,7 @@ A lightweight queue monitoring plugin for Filament. It supports database and Red
 ## Installation
 
 ```bash
-composer require kilo/filament-queue-monitor
+composer require blkdem/filament-queue-monitor
 php artisan queue-monitor:install
 ```
 
@@ -109,7 +109,7 @@ Access is denied by default (`QUEUE_MONITOR_AUTHORIZE=false`). Options:
   ```
 - Or define a Gate: `Gate::define('view-queue-monitor', fn ($user) => $user->isAdmin());`
 
-The metrics table is configurable, but the shipped migration creates `queue_monitor_metrics`. Create an equivalent table when changing `QUEUE_MONITOR_METRICS_TABLE`.
+The packaged migrations use the configured metrics and completed-jobs table names. Configure them before running migrations; changing a name afterwards does not rename an existing table.
 
 ## Queue Drivers
 
@@ -228,7 +228,8 @@ them once a job is gone.
 
 Concretely, on the Redis driver the package reads:
 
-- `queue_monitor_metrics` — the only table the package creates and owns
+- `queue_monitor_metrics` — aggregate metrics owned by the package
+- `queue_monitor_completed_jobs` — individual completed runs owned by the package
 - the failer's storage — `failed_jobs` with the default `database-uuids` driver
 
 It does **not** read the `jobs` table on the redis driver, and it never creates
@@ -294,6 +295,19 @@ __('blkdem/filament-queue-monitor::queue_monitor.navigation.label');
 ### Overriding the navigation group
 
 `QUEUE_MONITOR_NAV_GROUP` overrides the navigation group label. When it is unset the translated `navigation.group` line is used.
+
+## Development and releases
+
+```bash
+composer install
+composer test
+composer validate --strict --no-check-lock
+composer audit
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for changes, [RELEASING.md](RELEASING.md) for
+versioning and release steps, and [AUDIT.md](AUDIT.md) for the latest audit and
+known operational limitations. Package versions are derived from Git tags.
 
 ## License
 

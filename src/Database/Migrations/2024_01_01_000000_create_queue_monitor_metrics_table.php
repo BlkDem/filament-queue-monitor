@@ -35,7 +35,7 @@ return new class extends Migration
             $table->unique(
                 ['connection', 'queue', 'period'],
                 strlen($tableName.'_connection_queue_period_unique') > 60
-                    ? substr($tableName, 0, 30).'_connection_queue_period_unique'
+                    ? substr($tableName, 0, 60 - strlen('connection_queue_period_unique') - 1).'_connection_queue_period_unique'
                     : $tableName.'_connection_queue_period_unique',
             );
         });

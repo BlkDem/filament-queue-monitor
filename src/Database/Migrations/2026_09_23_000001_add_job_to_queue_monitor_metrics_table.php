@@ -42,6 +42,12 @@ return new class extends Migration
         $oldIndex = $this->indexName('connection_queue_period_unique');
         $newIndex = $this->indexName('connection_queue_job_period_unique');
 
+        $legacyIndex = substr($this->table(), 0, 30).'_connection_queue_period_unique';
+
+        if (! Schema::hasIndex($this->table(), $oldIndex) && Schema::hasIndex($this->table(), $legacyIndex)) {
+            $oldIndex = $legacyIndex;
+        }
+
         if ($oldIndex !== $this->oldIndex && Schema::hasIndex($this->table(), $this->oldIndex)) {
             $oldIndex = $this->oldIndex;
         }

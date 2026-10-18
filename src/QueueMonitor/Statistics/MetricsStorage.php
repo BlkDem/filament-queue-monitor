@@ -188,6 +188,11 @@ class MetricsStorage
         }
 
         $retentionDays = max(0, $retentionDays ?? config('filament-queue-monitor.metrics.retention_days', 30));
+
+        if ($retentionDays === 0) {
+            return 0;
+        }
+
         $cutoff = now()->subDays($retentionDays)->startOfDay()->format('Y-m-d H:i:s');
 
         return DB::table($this->table)

@@ -1,0 +1,10 @@
+* text=auto
+/.github export-ignore
+/.blkdem export-ignore
+/tests export-ignore
+/.gitignore export-ignore
+/.gitattributes export-ignore
+/phpunit.xml export-ignore
+/COMPATIBILITY_REPORT.md export-ignore
+/AUDIT.md export-ignore
+/RELEASING.md export-ignore

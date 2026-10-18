@@ -6,7 +6,13 @@ final class Access
 {
     public static function canAccess(): bool
     {
-        if (! (bool) config('filament-queue-monitor.enabled', true)) {
+        $enabled = config('filament-queue-monitor.enabled', true);
+
+        if (is_string($enabled)) {
+            $enabled = ! in_array(strtolower($enabled), ['0', 'false', 'no', 'off'], true);
+        }
+
+        if (! $enabled) {
             return false;
         }
 

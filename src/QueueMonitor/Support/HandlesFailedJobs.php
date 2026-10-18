@@ -44,7 +44,7 @@ trait HandlesFailedJobs
     {
         $decoded = json_decode($payload, true);
 
-        if (! is_array($decoded) || ! is_array($decoded['data'] ?? null) || ! isset($decoded['data']['command'])) {
+        if (! is_array($decoded) || ! is_array($decoded['data'] ?? null) || ! is_string($decoded['data']['command'] ?? null)) {
             return $payload;
         }
 

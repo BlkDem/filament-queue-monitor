@@ -33,7 +33,13 @@ class RecordQueueMetrics
 
         $this->storage = $storage;
         $this->completed = $completed ?? app(CompletedJobsStorage::class);
-        $this->isEnabled = (bool) config('filament-queue-monitor.enabled', true)
+        $enabled = config('filament-queue-monitor.enabled', true);
+
+        if (is_string($enabled)) {
+            $enabled = ! in_array(strtolower($enabled), ['0', 'false', 'no', 'off'], true);
+        }
+
+        $this->isEnabled = (bool) $enabled
             && $storage->isEnabled()
             && $storage->tableExists();
     }

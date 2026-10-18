@@ -272,11 +272,15 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         );
 
         $failer->forget($id);
+        $this->forgetCachedFailedCounts();
+        $this->forgetCachedQueues();
     }
 
     public function deleteFailedJob(string $id): void
     {
         $this->getFailer()->forget($id);
+        $this->forgetCachedFailedCounts();
+        $this->forgetCachedQueues();
     }
 
     protected function redis(): Connection

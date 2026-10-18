@@ -183,7 +183,7 @@ it('links each minute on the job class page to the runs list', function () {
         Illuminate\Support\Facades\Route::get(
             $pageClass::getRoutePath($panel, $parameters),
             fn () => 'ok',
-        )->name($pageClass::getRouteName('admin'));
+        )->name($pageClass::getRouteName(\BlkDem\FilamentQueueMonitor\Support\Version::isFilament4() ? $panel : 'admin'));
     }
 
     $page = new ViewCompletedJob;
@@ -326,7 +326,7 @@ it('links each run id on the runs list to the run page', function () {
         Illuminate\Support\Facades\Route::get(
             $pageClass::getRoutePath($panel, $parameters),
             fn () => 'ok',
-        )->name($pageClass::getRouteName('admin'));
+        )->name($pageClass::getRouteName(\BlkDem\FilamentQueueMonitor\Support\Version::isFilament4() ? $panel : 'admin'));
     }
 
     $page = new ListCompletedJobRuns;

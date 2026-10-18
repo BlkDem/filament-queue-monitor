@@ -170,7 +170,7 @@ it('links each job class on the list to its detail page', function () {
         Illuminate\Support\Facades\Route::get(
             $pageClass::getRoutePath($panel, $parameters),
             fn () => 'ok',
-        )->name($pageClass::getRouteName('admin'));
+        )->name($pageClass::getRouteName(\BlkDem\FilamentQueueMonitor\Support\Version::isFilament4() ? $panel : 'admin'));
     }
 
     $page = new ListCompletedJobs();

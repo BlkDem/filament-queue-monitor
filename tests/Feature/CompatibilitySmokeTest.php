@@ -802,7 +802,7 @@ function bindTestFilamentManager(array $pages): void
     Filament::setCurrentPanel($panel);
 
     foreach ($pages as $pageClass) {
-        $name = $pageClass::getRouteName('admin');
+        $name = $pageClass::getRouteName(\BlkDem\FilamentQueueMonitor\Support\Version::isFilament4() ? $panel : 'admin');
         $path = $pageClass::getRoutePath($panel);
 
         Route::get($path, fn () => 'ok')->name($name);

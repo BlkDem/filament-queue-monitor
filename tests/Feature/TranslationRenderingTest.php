@@ -79,7 +79,7 @@ beforeEach(function () {
         Route::get(
             $pageClass::getRoutePath($panel, $routeParameters[$pageClass] ?? []),
             fn () => 'ok',
-        )->name($pageClass::getRouteName('admin'));
+        )->name($pageClass::getRouteName(\BlkDem\FilamentQueueMonitor\Support\Version::isFilament4() ? $panel : 'admin'));
     }
 });
 

@@ -72,7 +72,7 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
 
         if (empty($queues)) {
             $configuredQueue = config("queue.connections.{$this->queueConnection}.queue", 'default');
-            $configuredQueue = is_array($configuredQueue) ? $configuredQueue[0] : $configuredQueue;
+            $configuredQueue = is_array($configuredQueue) ? ($configuredQueue[0] ?? 'default') : $configuredQueue;
             $queues[] = $this->info($configuredQueue ?: 'default');
         }
 
@@ -134,7 +134,7 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             $lastActivity = $lastJob->created_at ?? $lastJob->available_at;
 
             if ($lastActivity !== null) {
-                $lastActivityAt = Carbon::parse($lastActivity);
+                $lastActivityAt = Carbon::createFromTimestamp($lastActivity);
             }
         }
 
@@ -230,7 +230,7 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             return;
         }
 
-        $payload = $this->resetAttempts($job->payload);
+        $payload = $this->resetAttempts($this->failedStringValue($job, 'payload'));
         $payload = $this->refreshRetryUntil($payload);
 
         if ($payload === '') {
@@ -243,11 +243,15 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         );
 
         $failer->forget($id);
+        $this->forgetCachedFailedCounts();
+        $this->forgetCachedQueues();
     }
 
     public function deleteFailedJob(string $id): void
     {
         $this->getFailer()->forget($id);
+        $this->forgetCachedFailedCounts();
+        $this->forgetCachedQueues();
     }
 
     protected function rowsToJobInfo(iterable $rows): array
@@ -263,9 +267,9 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
                 queue: $row->queue ?? '',
                 job: $data['job'] ?? $data['displayName'] ?? '',
                 attempts: $row->attempts ?? 0,
-                createdAt: isset($row->created_at) ? Carbon::parse($row->created_at) : null,
+                createdAt: isset($row->created_at) ? Carbon::createFromTimestamp($row->created_at) : null,
                 availableAt: isset($row->available_at) ? Carbon::createFromTimestamp($row->available_at) : null,
-                reservedAt: isset($row->reserved_at) && $row->reserved_at ? Carbon::parse($row->reserved_at) : null,
+                reservedAt: isset($row->reserved_at) && $row->reserved_at ? Carbon::createFromTimestamp($row->reserved_at) : null,
                 payload: $row->payload ?? '',
             );
         }
@@ -273,12 +277,19 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         return $jobs;
     }
 
-    protected function parseFailedRecord(object $record): FailedJobInfo
+    protected function monitoredQueueConnection(): string
     {
-        $data = $this->safeJsonDecode($record->payload ?? '');
+        return $this->queueConnection;
+    }
+
+    protected function parseFailedRecord(object|array $record): FailedJobInfo
+    {
+        $data = $this->safeJsonDecode($this->failedStringValue($record, 'payload'));
 
         $id = $this->failedJobValue($record, 'id');
         $uuid = $this->failedJobValue($record, 'uuid') ?? ($data['uuid'] ?? null);
+
+        $failedAt = $this->failedJobValue($record, 'failed_at');
 
         return new FailedJobInfo(
             id: is_scalar($id) ? (string) $id : null,
@@ -287,7 +298,7 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
             queue: $this->failedStringValue($record, 'queue'),
             payload: $this->failedStringValue($record, 'payload'),
             exception: $this->failedStringValue($record, 'exception'),
-            failedAt: isset($record->failed_at) ? Carbon::parse($record->failed_at) : null,
+            failedAt: $failedAt !== null ? Carbon::parse($failedAt) : null,
         );
     }
 

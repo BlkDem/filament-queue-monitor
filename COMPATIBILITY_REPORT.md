@@ -38,7 +38,7 @@ The compatibility smoke test builds the queue, job, and failed-job tables. Unit 
 
 - `ext-redis` is optional at the Composer level and is only required when the Redis driver is selected.
 - Redis queue discovery uses `SCAN`, honors the configured Redis prefix, and can use the `QUEUE_MONITOR_REDIS_QUEUES` allowlist.
-- Metrics are stored in the configurable `metrics.table`; the shipped migration creates `queue_monitor_metrics`.
+- Metrics and completed runs use configurable table names; migrations read configuration when they execute. Set names before migrating.
 - Queue Monitor access is denied by default through `authorize`. Set it to `true`, a Closure, or a Laravel Gate ability explicitly.
 - Custom package Blade views use utility classes. Filament 4 applications using Tailwind 4 may need to add the vendor view path to their theme sources.
-- `composer audit` currently reports advisories in the installed Laravel framework dependency; they are not introduced by this package.
+- The 2026-10-18 audit updated local dependencies to Laravel 12.70.0 / Filament 4.15.2: 179 tests and 666 assertions pass, with no Composer security advisories. The older results above are historical. See `AUDIT.md` for scope and limitations; the new CI matrix still requires execution.

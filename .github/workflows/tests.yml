@@ -1,0 +1,66 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.2'
+            laravel: '^10.0'
+            testbench: '^8.0'
+            filament: '^3.3'
+          - php: '8.2'
+            laravel: '^11.0'
+            testbench: '^9.0'
+            filament: '^3.3'
+          - php: '8.2'
+            laravel: '^11.0'
+            testbench: '^9.0'
+            filament: '^4.0'
+          - php: '8.3'
+            laravel: '^12.0'
+            testbench: '^10.0'
+            filament: '^3.3'
+          - php: '8.3'
+            laravel: '^12.0'
+            testbench: '^10.0'
+            filament: '^4.0'
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }} / Filament ${{ matrix.filament }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict --no-check-lock
+      - name: Resolve compatibility dependencies
+        run: |
+          composer require --dev "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-update
+          composer require "filament/filament:${{ matrix.filament }}" --no-update
+          composer update --prefer-dist --no-interaction --no-security-blocking
+      - run: composer test
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+      - run: composer update --prefer-dist --no-interaction
+      - run: composer audit
