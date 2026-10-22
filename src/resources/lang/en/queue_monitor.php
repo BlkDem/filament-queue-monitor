@@ -177,6 +177,7 @@ return [
         'attempts' => 'Attempts',
         'connection' => 'Connection',
         'empty_value' => '—',
+        'list_truncated' => 'Only the first :limit entries are loaded. Search, filters and sorting apply to those; pick a queue to narrow the list.',
     ],
 
     'status' => [

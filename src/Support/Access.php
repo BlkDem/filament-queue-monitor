@@ -20,8 +20,32 @@ final class Access
             return false;
         }
 
-        $authorize = config('filament-queue-monitor.authorize');
+        return self::passes(config('filament-queue-monitor.authorize'));
+    }
 
+    /**
+     * Retrying and deleting failed jobs change what the application does, so
+     * they can be held to a stricter rule than looking. authorize_actions takes
+     * the same values as authorize; left unset it falls back to authorize, and
+     * whoever is refused the pages is refused the actions too.
+     */
+    public static function canManage(): bool
+    {
+        if (! self::canAccess()) {
+            return false;
+        }
+
+        $rule = config('filament-queue-monitor.authorize_actions');
+
+        if ($rule === null || $rule === '') {
+            return true;
+        }
+
+        return self::passes($rule);
+    }
+
+    protected static function passes(mixed $authorize): bool
+    {
         if (is_bool($authorize)) {
             return $authorize;
         }
@@ -31,7 +55,13 @@ final class Access
         }
 
         if (is_string($authorize) && $authorize !== '') {
-            if (in_array(strtolower($authorize), ['0', 'false', 'no', 'off'], true)) {
+            $normalized = strtolower($authorize);
+
+            if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+                return true;
+            }
+
+            if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
                 return false;
             }
 
@@ -49,11 +79,7 @@ final class Access
      */
     protected static function hasNothingToMonitor(): bool
     {
-        $connection = config('filament-queue-monitor.driver');
-
-        if (! is_string($connection) || $connection === '') {
-            $connection = config('queue.default', 'database');
-        }
+        $connection = MonitoredConnection::name();
 
         return $connection === 'sync'
             || config("queue.connections.{$connection}.driver") === 'sync';

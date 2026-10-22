@@ -57,11 +57,11 @@ class ListDelayedJobs extends BaseQueueTablePage
         $queue = $this->queue;
 
         if ($queue) {
-            $jobs = $driver->delayedJobs($queue);
+            $jobs = $this->bounded($driver->delayedJobs($queue, $this->fetchLimit()));
         } else {
             $jobs = [];
             foreach ($queues as $queueInfo) {
-                $jobs = array_merge($jobs, $driver->delayedJobs($queueInfo->name));
+                $jobs = array_merge($jobs, $this->bounded($driver->delayedJobs($queueInfo->name, $this->fetchLimit())));
             }
         }
 
@@ -109,6 +109,7 @@ class ListDelayedJobs extends BaseQueueTablePage
     {
         return $table
             ->query($this->getTableQuery())
+            ->description(fn (): ?string => $this->truncationNotice())
             ->poll($this->getTablePollingInterval())
             ->columns([
                 TextColumn::make('job')

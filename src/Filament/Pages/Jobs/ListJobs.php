@@ -68,8 +68,8 @@ class ListJobs extends BaseQueueTablePage
         // pendingJobs left the processing half of the page permanently empty
         // and made the status column and its processing filter dead.
         foreach ($names as $name) {
-            foreach ([$driver->processingJobs($name), $driver->pendingJobs($name)] as $half) {
-                foreach ($this->toArray($half) as $job) {
+            foreach ([$driver->processingJobs($name, $this->fetchLimit()), $driver->pendingJobs($name, $this->fetchLimit())] as $half) {
+                foreach ($this->bounded($this->toArray($half)) as $job) {
                     $allRecords[] = $this->jobInfoToArray($job);
                 }
             }
@@ -113,6 +113,7 @@ class ListJobs extends BaseQueueTablePage
     {
         return $table
             ->query($this->getTableQuery())
+            ->description(fn (): ?string => $this->truncationNotice())
             ->poll($this->getTablePollingInterval())
             ->columns([
                 TextColumn::make('job')

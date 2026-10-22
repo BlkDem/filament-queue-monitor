@@ -54,6 +54,8 @@ it('aggregates completed jobs per job class and queue', function () {
 it('scopes the page to the queue connection in use', function () {
     insertMetricRow('emails', 'App\Jobs\SendMail', 7, 0, 0.10, 0.10, connection: 'database');
 
+    // Detected rather than pinned, so the monitor follows queue.default.
+    config()->set('filament-queue-monitor.driver', null);
     config()->set('queue.default', 'redis');
 
     expect((new ListCompletedJobs())->getTableQuery()->get())->toHaveCount(0);
@@ -214,6 +216,8 @@ it('scopes the detail page to the queue connection in use', function () {
 
     expect($page->getTableQuery()->get())->toHaveCount(1);
 
+    // Detected rather than pinned, so the monitor follows queue.default.
+    config()->set('filament-queue-monitor.driver', null);
     config()->set('queue.default', 'redis');
 
     $redis = new ViewCompletedJob();

@@ -11,7 +11,11 @@ class MetricsStorage
 
     protected ?bool $cachedTableExists = null;
 
+    protected ?float $tableCheckedAt = null;
+
     protected ?bool $cachedJobColumnExists = null;
+
+    protected ?float $columnCheckedAt = null;
 
     public function __construct()
     {
@@ -64,7 +68,21 @@ class MetricsStorage
 
     public function tableExists(): bool
     {
-        return $this->cachedTableExists ??= Schema::hasTable($this->table);
+        // These are singletons, so in a queue worker the answer lives as long
+        // as the worker. A table that exists stays cached; a missing one is
+        // asked again after a minute, so a migration run after the workers
+        // started is picked up without restarting them.
+        if ($this->cachedTableExists === false && $this->tableCheckedAt !== null
+            && microtime(true) - $this->tableCheckedAt >= 60) {
+            $this->cachedTableExists = null;
+        }
+
+        if ($this->cachedTableExists === null) {
+            $this->cachedTableExists = Schema::hasTable($this->table);
+            $this->tableCheckedAt = microtime(true);
+        }
+
+        return $this->cachedTableExists;
     }
 
     public function jobColumnExists(): bool
@@ -73,7 +91,19 @@ class MetricsStorage
             return false;
         }
 
-        return $this->cachedJobColumnExists ??= Schema::hasColumn($this->table, 'job');
+        // Same lifetime rule as the table: the job column arrives with a later
+        // migration that also swaps the unique index the upsert relies on.
+        if ($this->cachedJobColumnExists === false && $this->columnCheckedAt !== null
+            && microtime(true) - $this->columnCheckedAt >= 60) {
+            $this->cachedJobColumnExists = null;
+        }
+
+        if ($this->cachedJobColumnExists === null) {
+            $this->cachedJobColumnExists = Schema::hasColumn($this->table, 'job');
+            $this->columnCheckedAt = microtime(true);
+        }
+
+        return $this->cachedJobColumnExists;
     }
 
     public function record(
@@ -227,10 +257,15 @@ class MetricsStorage
 
     protected function upsertUpdates(): array
     {
-        $driver = DB::connection()->getDriverName();
-        $source = match ($driver) {
-            'pgsql', 'sqlite' => 'excluded.',
-            'sqlsrv' => 'laravel_source.',
+        $connection = DB::connection();
+        $driver = $connection->getDriverName();
+
+        // MySQL with use_upsert_alias inserts "as laravel_upsert_alias", which
+        // makes every bare column name ambiguous; the update failed outright.
+        $source = match (true) {
+            in_array($driver, ['pgsql', 'sqlite'], true) => 'excluded.',
+            $driver === 'sqlsrv' => 'laravel_source.',
+            (bool) $connection->getConfig('use_upsert_alias') => 'laravel_upsert_alias.',
             default => 'VALUES(',
         };
 
@@ -238,32 +273,46 @@ class MetricsStorage
             ? "VALUES({$column})"
             : "{$source}{$column}";
 
+        // The existing row, named by its table so it never collides with the
+        // incoming row's alias.
+        $table = $connection->getQueryGrammar()->wrapTable($this->table);
+        $current = fn (string $column): string => "{$table}.{$column}";
+
         $incomingProcessed = $value('processed');
         $incomingFailed = $value('failed');
         $incomingAvg = $value('avg_runtime');
         $incomingMax = $value('max_runtime');
-        $existingCount = '(processed + failed)';
+        $currentAvg = $current('avg_runtime');
+        $currentMax = $current('max_runtime');
+        $existingCount = "({$current('processed')} + {$current('failed')})";
         $incomingCount = "({$incomingProcessed} + {$incomingFailed})";
         $knownIncomingCount = "CASE WHEN {$incomingAvg} IS NULL THEN 0 ELSE {$incomingCount} END";
 
+        // processed and failed come last on purpose. MySQL and MariaDB apply
+        // ON DUPLICATE KEY UPDATE assignments left to right, so a column
+        // assigned earlier is already the new value when a later expression
+        // reads it. The average reads the existing counts, so it has to be
+        // assigned before they change: with the counts first, two runs of 10s
+        // and 20s averaged to 13.3s instead of 15s. Postgres, SQLite and SQL
+        // Server read the old row throughout, so the order is harmless there.
         return [
-            'processed' => DB::raw("processed + {$incomingProcessed}"),
-            'failed' => DB::raw("failed + {$incomingFailed}"),
             'avg_runtime' => DB::raw(
                 "CASE ".
-                "WHEN {$incomingAvg} IS NULL THEN avg_runtime ".
-                "WHEN avg_runtime IS NULL THEN {$incomingAvg} ".
-                "WHEN ({$existingCount} + {$knownIncomingCount}) = 0 THEN avg_runtime ".
-                "ELSE (avg_runtime * {$existingCount} + {$incomingAvg} * {$knownIncomingCount}) / ({$existingCount} + {$knownIncomingCount}) ".
+                "WHEN {$incomingAvg} IS NULL THEN {$currentAvg} ".
+                "WHEN {$currentAvg} IS NULL THEN {$incomingAvg} ".
+                "WHEN ({$existingCount} + {$knownIncomingCount}) = 0 THEN {$currentAvg} ".
+                "ELSE ({$currentAvg} * {$existingCount} + {$incomingAvg} * {$knownIncomingCount}) / ({$existingCount} + {$knownIncomingCount}) ".
                 "END"
             ),
             'max_runtime' => DB::raw(
                 "CASE ".
-                "WHEN {$incomingMax} IS NULL THEN max_runtime ".
-                "WHEN max_runtime IS NULL THEN {$incomingMax} ".
-                "WHEN {$incomingMax} > max_runtime THEN {$incomingMax} ".
-                "ELSE max_runtime END"
+                "WHEN {$incomingMax} IS NULL THEN {$currentMax} ".
+                "WHEN {$currentMax} IS NULL THEN {$incomingMax} ".
+                "WHEN {$incomingMax} > {$currentMax} THEN {$incomingMax} ".
+                "ELSE {$currentMax} END"
             ),
+            'processed' => DB::raw("{$current('processed')} + {$incomingProcessed}"),
+            'failed' => DB::raw("{$current('failed')} + {$incomingFailed}"),
             'updated_at' => now(),
         ];
     }

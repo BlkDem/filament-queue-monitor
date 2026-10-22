@@ -19,6 +19,8 @@ class CompletedJobsStorage
 
     protected ?bool $cachedTableExists = null;
 
+    protected ?float $tableCheckedAt = null;
+
     public function __construct()
     {
         $this->table = (string) config('filament-queue-monitor.metrics.table_completed_jobs', 'queue_monitor_completed_jobs');
@@ -48,7 +50,7 @@ class CompletedJobsStorage
      */
     public function storesPayload(): bool
     {
-        $enabled = config('filament-queue-monitor.metrics.store_payload', true);
+        $enabled = config('filament-queue-monitor.metrics.store_payload', false);
 
         if (is_string($enabled)) {
             return ! in_array(strtolower($enabled), ['0', 'false', 'no', 'off'], true);
@@ -59,7 +61,21 @@ class CompletedJobsStorage
 
     public function tableExists(): bool
     {
-        return $this->cachedTableExists ??= Schema::hasTable($this->table);
+        // These are singletons, so in a queue worker the answer lives as long
+        // as the worker. A table that exists stays cached; a missing one is
+        // asked again after a minute, so a migration run after the workers
+        // started is picked up without restarting them.
+        if ($this->cachedTableExists === false && $this->tableCheckedAt !== null
+            && microtime(true) - $this->tableCheckedAt >= 60) {
+            $this->cachedTableExists = null;
+        }
+
+        if ($this->cachedTableExists === null) {
+            $this->cachedTableExists = Schema::hasTable($this->table);
+            $this->tableCheckedAt = microtime(true);
+        }
+
+        return $this->cachedTableExists;
     }
 
     public function record(

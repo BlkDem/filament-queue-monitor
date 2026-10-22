@@ -39,14 +39,22 @@ class RecordQueueMetrics
             $enabled = ! in_array(strtolower($enabled), ['0', 'false', 'no', 'off'], true);
         }
 
-        $this->isEnabled = (bool) $enabled
-            && $storage->isEnabled()
-            && $storage->tableExists();
+        try {
+            $this->isEnabled = (bool) $enabled
+                && $storage->isEnabled()
+                && $storage->tableExists();
+        } catch (Throwable $e) {
+            // The listener is built for every queue event, JobProcessing
+            // included, which fires before the job runs. An exception there
+            // released or failed the job without ever running it.
+            report($e);
+            $this->isEnabled = false;
+        }
     }
 
     public function handleProcessing(JobProcessing $event): void
     {
-        if (! $this->isEnabled) {
+        if (! $this->shouldRecord($event->connectionName)) {
             return;
         }
 
@@ -59,62 +67,96 @@ class RecordQueueMetrics
 
     public function handleProcessed(JobProcessed $event): void
     {
-        if (! $this->isEnabled) {
+        if (! $this->shouldRecord($event->connectionName)) {
             return;
         }
 
-        $startedAt = self::$startedAt[$event->job] ?? null;
-        unset(self::$startedAt[$event->job]);
+        $runtime = $this->takeRuntime($event->job);
 
-        $runtime = $startedAt !== null ? (float) (microtime(true) - $startedAt) : null;
-
-        $period = now()->startOfMinute()->format('Y-m-d H:i:s');
-
-        $this->storage->record(
-            $event->connectionName,
-            $event->job->getQueue(),
-            $period,
-            processed: 1,
-            avgRuntime: $runtime,
-            maxRuntime: $runtime,
-            job: $this->getJobName($event->job),
-        );
+        $this->safely(function () use ($event, $runtime): void {
+            $this->storage->record(
+                $event->connectionName,
+                $event->job->getQueue(),
+                now()->startOfMinute()->format('Y-m-d H:i:s'),
+                processed: 1,
+                avgRuntime: $runtime,
+                maxRuntime: $runtime,
+                job: $this->getJobName($event->job),
+            );
+        });
 
         // The aggregate above cannot be split back into individual runs, so the
         // per-run record is written separately while the job is still in hand.
-        $this->completed->record(
-            $event->connectionName,
-            $event->job->getQueue(),
-            $this->getJobName($event->job),
-            $this->getJobUuid($event->job),
-            $runtime,
-            null,
-            $this->getJobPayload($event->job),
-        );
+        $this->safely(function () use ($event, $runtime): void {
+            $this->completed->record(
+                $event->connectionName,
+                $event->job->getQueue(),
+                $this->getJobName($event->job),
+                $this->getJobUuid($event->job),
+                $runtime,
+                null,
+                $this->getJobPayload($event->job),
+            );
+        });
     }
 
     public function handleFailed(JobFailed $event): void
     {
-        if (! $this->isEnabled) {
+        if (! $this->shouldRecord($event->connectionName)) {
             return;
         }
 
-        $startedAt = self::$startedAt[$event->job] ?? null;
-        unset(self::$startedAt[$event->job]);
+        $runtime = $this->takeRuntime($event->job);
 
-        $runtime = $startedAt !== null ? (float) (microtime(true) - $startedAt) : null;
+        $this->safely(function () use ($event, $runtime): void {
+            $this->storage->record(
+                $event->connectionName,
+                $event->job->getQueue(),
+                now()->startOfMinute()->format('Y-m-d H:i:s'),
+                failed: 1,
+                avgRuntime: $runtime,
+                maxRuntime: $runtime,
+                job: $this->getJobName($event->job),
+            );
+        });
+    }
 
-        $period = now()->startOfMinute()->format('Y-m-d H:i:s');
+    /**
+     * A sync job runs inside the request that dispatched it, so recording it
+     * added inserts to web requests for a connection the monitor never shows.
+     */
+    protected function shouldRecord(?string $connectionName): bool
+    {
+        return $this->isEnabled && $connectionName !== 'sync';
+    }
 
-        $this->storage->record(
-            $event->connectionName,
-            $event->job->getQueue(),
-            $period,
-            failed: 1,
-            avgRuntime: $runtime,
-            maxRuntime: $runtime,
-            job: $this->getJobName($event->job),
-        );
+    protected function takeRuntime(object $job): ?float
+    {
+        $startedAt = self::$startedAt[$job] ?? null;
+        unset(self::$startedAt[$job]);
+
+        return $startedAt !== null ? (float) (microtime(true) - $startedAt) : null;
+    }
+
+    /**
+     * The worker raises JobProcessed inside the same try block as the job, so
+     * an exception here was handled as the job's own: JobExceptionOccurred
+     * fired for a job that had succeeded, listeners registered after this one
+     * never ran, and a lost database connection stopped the worker. Monitoring
+     * must never change how a job is seen to end, so a failed write is
+     * reported and dropped.
+     */
+    protected function safely(callable $write): void
+    {
+        try {
+            $write();
+        } catch (Throwable $e) {
+            try {
+                report($e);
+            } catch (Throwable) {
+                // Nothing left to do without risking the job.
+            }
+        }
     }
 
     /**

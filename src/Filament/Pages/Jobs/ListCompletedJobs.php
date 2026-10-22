@@ -212,9 +212,7 @@ class ListCompletedJobs extends Page implements HasTable
      */
     protected function currentConnection(): string
     {
-        $connection = config('queue.default', 'database');
-
-        return is_string($connection) && $connection !== '' ? $connection : 'database';
+        return \BlkDem\FilamentQueueMonitor\Support\MonitoredConnection::name();
     }
 
     protected function formatRuntime(mixed $state): string

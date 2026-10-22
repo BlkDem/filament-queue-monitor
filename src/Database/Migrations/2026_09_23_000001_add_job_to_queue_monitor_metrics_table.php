@@ -61,10 +61,37 @@ return new class extends Migration
         DB::table($this->table())->whereNull('job')->orWhere('job', '')->update(['job' => 'unknown']);
 
         if (! Schema::hasIndex($this->table(), $newIndex)) {
+            $this->shrinkKeyColumnsForMysql();
+
             Schema::table($this->table(), function (Blueprint $table) use ($newIndex) {
                 $table->unique(['connection', 'queue', 'job', 'period'], $newIndex);
             });
         }
+    }
+
+    /**
+     * Tables created before the key columns were sized have four 255 character
+     * columns in this index, 4080 bytes under utf8mb4 against MySQL's 3072, so
+     * the index could not be created there. The stored values are far shorter
+     * (a period is 19 characters), so the columns are narrowed first. Raw SQL
+     * because column changes need doctrine/dbal on Laravel 10.
+     */
+    protected function shrinkKeyColumnsForMysql(): void
+    {
+        $connection = Schema::getConnection();
+
+        if (! in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
+        $table = $connection->getQueryGrammar()->wrapTable($this->table());
+
+        $connection->statement(
+            "ALTER TABLE {$table} ".
+            'MODIFY `connection` VARCHAR(100) NOT NULL, '.
+            'MODIFY `queue` VARCHAR(191) NOT NULL, '.
+            'MODIFY `period` VARCHAR(32) NOT NULL'
+        );
     }
 
     public function down(): void

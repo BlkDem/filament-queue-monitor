@@ -15,13 +15,22 @@ interface QueueMonitorDriver
 
     public function info(string $queue): QueueInfo;
 
-    public function pendingJobs(string $queue): iterable;
+    /**
+     * The list methods take a limit because the pages and widgets only ever
+     * show a window of them, and a backlog is exactly when reading the whole
+     * queue into memory would take the monitor down.
+     */
+    public function pendingJobs(string $queue, ?int $limit = null): iterable;
 
-    public function processingJobs(string $queue): iterable;
+    public function processingJobs(string $queue, ?int $limit = null): iterable;
 
-    public function delayedJobs(string $queue): iterable;
+    public function delayedJobs(string $queue, ?int $limit = null): iterable;
 
-    public function failedJobs(): iterable;
+    /**
+     * Newest first. A limit keeps a large failed_jobs table, payloads and
+     * stack traces included, from being loaded whole.
+     */
+    public function failedJobs(?int $limit = null): iterable;
 
     public function failedJobsCount(?string $connection = null): int;
 

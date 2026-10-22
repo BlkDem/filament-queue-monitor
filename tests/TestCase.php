@@ -46,12 +46,14 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('queue.failed.database', 'testing');
         $app['config']->set('queue.failed.table', 'failed_jobs');
 
+        // The redis tests flush their database, so they get one of their own
+        // instead of database 0, which is where a developer's data lives.
         $app['config']->set('database.redis.default', [
             'driver' => 'redis',
-            'host' => '127.0.0.1',
+            'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => null,
-            'port' => 6379,
-            'database' => 0,
+            'port' => (int) env('REDIS_PORT', 6379),
+            'database' => (int) env('QUEUE_MONITOR_TEST_REDIS_DB', 15),
             'prefix' => '',
         ]);
 

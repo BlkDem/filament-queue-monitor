@@ -23,6 +23,31 @@ trait HandlesFailedJobs
         return app('queue.failer');
     }
 
+    /**
+     * Failed job records, newest first. The database providers expose their
+     * query, so a limit is applied in SQL; any other provider only offers
+     * all(), which is read and then cut down.
+     *
+     * @return list<object|array>
+     */
+    protected function failedRecords(?int $limit = null): array
+    {
+        $failer = $this->getFailer();
+        $limit = $limit !== null && $limit > 0 ? $limit : null;
+
+        if ($limit !== null && is_callable([$failer, 'getTable'])) {
+            $query = $failer->getTable();
+
+            if ($query instanceof \Illuminate\Database\Query\Builder) {
+                return $query->orderBy('id', 'desc')->limit($limit)->get()->all();
+            }
+        }
+
+        $records = array_values((array) ($failer->all() ?? []));
+
+        return $limit !== null ? array_slice($records, 0, $limit) : $records;
+    }
+
     protected function resetAttempts(string $payload): string
     {
         $decoded = json_decode($payload, true);
@@ -48,31 +73,61 @@ trait HandlesFailedJobs
             return $payload;
         }
 
-        if (str_starts_with($decoded['data']['command'], 'O:')) {
-            $instance = @unserialize($decoded['data']['command']);
-        } else {
-            $instance = null;
+        $command = $decoded['data']['command'];
+
+        if (! str_starts_with($command, 'O:')) {
+            $command = null;
 
             if (app()->bound(\Illuminate\Contracts\Encryption\Encrypter::class)) {
                 try {
-                    $encrypted = app()->make(\Illuminate\Contracts\Encryption\Encrypter::class);
-                    $instance = @unserialize($encrypted->decrypt($decoded['data']['command']));
+                    $command = app()->make(\Illuminate\Contracts\Encryption\Encrypter::class)
+                        ->decrypt($decoded['data']['command']);
                 } catch (\Throwable) {
-                    $instance = null;
+                    $command = null;
                 }
             }
         }
 
-        if (isset($instance) && is_object($instance) && ! $instance instanceof \__PHP_Incomplete_Class && method_exists($instance, 'retryUntil')) {
-            $retryUntil = $instance->retryUntil();
-            $decoded['retryUntil'] = $retryUntil instanceof \DateTimeInterface
-                ? $retryUntil->getTimestamp()
-                : $retryUntil;
+        $instance = is_string($command)
+            ? $this->unserializeCommand($command, $decoded['data']['commandName'] ?? null)
+            : null;
+
+        if ($instance !== null && method_exists($instance, 'retryUntil')) {
+            try {
+                $retryUntil = $instance->retryUntil();
+                $decoded['retryUntil'] = $retryUntil instanceof \DateTimeInterface
+                    ? $retryUntil->getTimestamp()
+                    : $retryUntil;
+            } catch (\Throwable) {
+                // Keep the deadline the payload already carries.
+            }
         }
 
         $encoded = json_encode($decoded);
 
         return is_string($encoded) ? $encoded : $payload;
+    }
+
+    /**
+     * The command is only unserialized to ask it for retryUntil(), so only the
+     * command's own class may be built. Anything nested, models included,
+     * stays an incomplete placeholder instead of running its wakeup or
+     * destructor from a page request; a command that cannot be restored that
+     * way simply keeps the deadline already in its payload.
+     */
+    protected function unserializeCommand(string $command, mixed $commandName): ?object
+    {
+        if (! is_string($commandName) || $commandName === '' || ! class_exists($commandName)) {
+            return null;
+        }
+
+        try {
+            $instance = @unserialize($command, ['allowed_classes' => [$commandName]]);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $instance instanceof $commandName ? $instance : null;
     }
 
     public function failedJobsCount(?string $connection = null): int
@@ -136,9 +191,7 @@ trait HandlesFailedJobs
      */
     protected function monitoredQueueConnection(): string
     {
-        $connection = config('queue.default', 'database');
-
-        return is_string($connection) && $connection !== '' ? $connection : 'database';
+        return \BlkDem\FilamentQueueMonitor\Support\MonitoredConnection::name();
     }
 
     protected function failedStringValue(object|array $record, string $property, string $default = ''): string

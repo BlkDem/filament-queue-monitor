@@ -151,6 +151,8 @@ it('scopes the runs list to the queue connection in use', function () {
 
     expect($page->getTableQuery()->get())->toHaveCount(0);
 
+    // Detected rather than pinned, so the monitor follows queue.default.
+    config()->set('filament-queue-monitor.driver', null);
     config()->set('queue.default', 'redis');
 
     $redis = new ListCompletedJobRuns;
@@ -200,6 +202,9 @@ it('links each minute on the job class page to the runs list', function () {
 });
 
 it('records the raw payload alongside each run', function () {
+    // Opt-in since payloads may carry secrets.
+    config()->set('filament-queue-monitor.metrics.store_payload', true);
+
     $storage = new MetricsStorage;
     $completed = new CompletedJobsStorage;
 

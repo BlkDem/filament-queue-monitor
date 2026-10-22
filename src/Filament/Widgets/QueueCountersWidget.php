@@ -9,11 +9,17 @@ use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListCompletedJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListDelayedJobs;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
 use Carbon\Carbon;
 
 class QueueCountersWidget extends BaseWidget
 {
+    public static function canView(): bool
+    {
+        return Access::canAccess();
+    }
+
     protected static bool $isLazy = false;
 
     protected int | string | array $columnSpan = 'full';
@@ -53,9 +59,7 @@ class QueueCountersWidget extends BaseWidget
 
     protected function currentConnection(): string
     {
-        $connection = config('queue.default', 'database');
-
-        return is_string($connection) && $connection !== '' ? $connection : 'database';
+        return \BlkDem\FilamentQueueMonitor\Support\MonitoredConnection::name();
     }
 
     protected function getStats(): array

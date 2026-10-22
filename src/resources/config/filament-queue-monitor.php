@@ -8,6 +8,10 @@ return [
 
     'refresh_interval' => env('QUEUE_MONITOR_REFRESH_INTERVAL', 10),
 
+    // The most jobs a list page loads per queue and in total. Lists are
+    // searched and sorted in memory, so this caps what a backlog costs.
+    'list_limit' => env('QUEUE_MONITOR_LIST_LIMIT', 1000),
+
     'metrics' => [
         'enabled' => env('QUEUE_MONITOR_METRICS_ENABLED', true),
         'table' => env('QUEUE_MONITOR_METRICS_TABLE', 'queue_monitor_metrics'),
@@ -15,11 +19,12 @@ return [
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
 
-        // A full job payload per run is around 5 KB, so a busy application
-        // writes its own queue traffic back into the database: roughly 40 GB
-        // a month at ten thousand jobs an hour, retained for retention_days.
-        // Turn it off to keep the per-run rows and drop only the payload.
-        'store_payload' => env('QUEUE_MONITOR_STORE_PAYLOAD', true),
+        // Off by default. A payload holds the serialized command, so whatever
+        // a job carries (tokens, personal data) would be copied into this
+        // table and shown in the panel. It is also around 5 KB per run:
+        // roughly 40 GB a month at ten thousand jobs an hour. The per-run rows
+        // are kept either way; this only adds the payload to them.
+        'store_payload' => env('QUEUE_MONITOR_STORE_PAYLOAD', false),
 
         // Runs queue-monitor:prune daily. The completed jobs table keeps full
         // job payloads, so without this it only grows. Turn this off if you
@@ -34,6 +39,10 @@ return [
     ],
 
     'authorize' => env('QUEUE_MONITOR_AUTHORIZE', false),
+
+    // Who may retry or delete failed jobs. Same values as authorize: a bool or
+    // a Gate ability. Unset, anyone allowed to see the pages may also act.
+    'authorize_actions' => env('QUEUE_MONITOR_AUTHORIZE_ACTIONS'),
 
     'failed_jobs' => [
         'table' => env('QUEUE_MONITOR_FAILED_JOBS_TABLE', 'failed_jobs'),

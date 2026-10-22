@@ -8,10 +8,22 @@ use BlkDem\FilamentQueueMonitor\Filament\Pages\Jobs\ListJobs;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ListQueues;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\QueueMonitorManager;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class QueueStatsOverviewWidget extends BaseWidget
 {
+    /**
+     * The plugin registers its widgets on the panel, and Filament's own
+     * dashboard renders every panel widget that can be viewed. Without this
+     * any panel user saw queue names, counts and job classes on the home
+     * page regardless of the authorize setting.
+     */
+    public static function canView(): bool
+    {
+        return Access::canAccess();
+    }
+
     protected static bool $isLazy = false;
 
     protected int | string | array $columnSpan = 'full';
@@ -147,7 +159,7 @@ class QueueStatsOverviewWidget extends BaseWidget
             }
         };
 
-        $connection = config('queue.default', 'database');
+        $connection = \BlkDem\FilamentQueueMonitor\Support\MonitoredConnection::name();
 
         foreach ((array) config("queue.connections.{$connection}.queue", 'default') as $name) {
             $add($name);

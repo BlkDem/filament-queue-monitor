@@ -40,12 +40,14 @@ return [
 
     'refresh_interval' => env('QUEUE_MONITOR_REFRESH_INTERVAL', 10),
 
+    'list_limit' => env('QUEUE_MONITOR_LIST_LIMIT', 1000),
+
     'metrics' => [
         'enabled' => env('QUEUE_MONITOR_METRICS_ENABLED', true),
         'table' => env('QUEUE_MONITOR_METRICS_TABLE', 'queue_monitor_metrics'),
         'table_completed_jobs' => env('QUEUE_MONITOR_COMPLETED_JOBS_TABLE', 'queue_monitor_completed_jobs'),
         'retention_days' => env('QUEUE_MONITOR_METRICS_RETENTION_DAYS', 30),
-        'store_payload' => env('QUEUE_MONITOR_STORE_PAYLOAD', true),
+        'store_payload' => env('QUEUE_MONITOR_STORE_PAYLOAD', false),
         'refresh_interval' => env('QUEUE_MONITOR_METRICS_REFRESH_INTERVAL', 30),
         'auto_prune' => env('QUEUE_MONITOR_AUTO_PRUNE', true),
     ],
@@ -57,6 +59,8 @@ return [
     ],
 
     'authorize' => env('QUEUE_MONITOR_AUTHORIZE', false),
+
+    'authorize_actions' => env('QUEUE_MONITOR_AUTHORIZE_ACTIONS'),
 
     'failed_jobs' => [
         'table' => env('QUEUE_MONITOR_FAILED_JOBS_TABLE', 'failed_jobs'),
@@ -79,8 +83,10 @@ return [
 | Variable | Default | Description |
 |---|---|---|
 | `QUEUE_MONITOR_ENABLED` | `true` | Master switch. When false every page and widget is hidden. |
-| `QUEUE_MONITOR_DRIVER` | — | Queue driver to monitor: `database` or `redis` |
-| `QUEUE_MONITOR_AUTHORIZE` | `false` | Access control. Set to `true` to allow all authenticated users. Use a Closure or Gate ability for custom logic. |
+| `QUEUE_MONITOR_DRIVER` | — | What to monitor: `database`, `redis`, or the name of a queue connection (e.g. `reports`). Empty follows `queue.default`. A driver type follows `queue.default` when that connection has the same driver. |
+| `QUEUE_MONITOR_AUTHORIZE` | `false` | Who may see the pages and widgets: `true`, `false`, or a Gate ability name. |
+| `QUEUE_MONITOR_AUTHORIZE_ACTIONS` | — | Who may retry and delete failed jobs: `true`, `false`, or a Gate ability. Empty means everyone allowed by `QUEUE_MONITOR_AUTHORIZE`. |
+| `QUEUE_MONITOR_LIST_LIMIT` | `1000` | Most jobs a list page loads, per queue and in total. Lists are searched and sorted in memory, so this bounds what a backlog costs. A notice shows when a list is cut. |
 | `QUEUE_MONITOR_NAV_ENABLED` | `true` | Show/hide navigation group |
 | `QUEUE_MONITOR_NAV_GROUP` | *(translated)* | Navigation group label. Falls back to the translated `navigation.group` line when unset. |
 | `QUEUE_MONITOR_NAV_SORT` | `0` | Navigation sort order |
@@ -90,24 +96,32 @@ return [
 | `QUEUE_MONITOR_COMPLETED_JOBS_TABLE` | `queue_monitor_completed_jobs` | Database table for per-run completed job records. Also read by the migrations. |
 | `QUEUE_MONITOR_METRICS_RETENTION_DAYS` | `30` | Days to retain metrics and completed job records |
 | `QUEUE_MONITOR_AUTO_PRUNE` | `true` | Run `queue-monitor:prune` daily. Set to `false` if you schedule it yourself. |
-| `QUEUE_MONITOR_STORE_PAYLOAD` | `true` | Keep the full job payload on each completed run. Each one is roughly 5 KB, so a busy application writes its whole queue volume into your database. Set to `false` to keep the run records without the payload. |
+| `QUEUE_MONITOR_STORE_PAYLOAD` | `false` | Also keep the full job payload on each completed run. A payload holds the serialized command, so anything a job carries (tokens, personal data) is copied into the table and shown in the panel. Each one is roughly 5 KB. Run records are kept either way. |
 | `QUEUE_MONITOR_METRICS_REFRESH_INTERVAL` | `30` | Metrics chart refresh interval in seconds |
 | `QUEUE_MONITOR_FAILED_JOBS_TABLE` | `failed_jobs` | Unused. Failed jobs are read through Laravel's failer, see [Which storage backs each number](#which-storage-backs-each-number) |
 | `QUEUE_MONITOR_FAILED_JOBS_DATABASE` | `null` | Unused, same as above |
 | `QUEUE_MONITOR_STUCK_JOBS_THRESHOLD_HOURS` | `12` | Hours after which a reserved job is considered stuck |
-| `QUEUE_MONITOR_REDIS_CONNECTION` | `null` | Redis connection name for Redis driver |
+| `QUEUE_MONITOR_REDIS_CONNECTION` | `null` | Redis connection to read. Empty uses the `connection` of the monitored queue connection, as the queue itself does. |
 | `QUEUE_MONITOR_REDIS_QUEUES` | `[]` | Comma-separated allowlist of Redis queue names (empty = auto-discover) |
 
 ### Access Control
 
 Access is denied by default (`QUEUE_MONITOR_AUTHORIZE=false`). Options:
 
-- Set `QUEUE_MONITOR_AUTHORIZE=true` to allow all authenticated users
-- Or in `AppServiceProvider`, set a Closure for custom logic:
+- Set `QUEUE_MONITOR_AUTHORIZE=true` to allow every user of the panel
+- Or name a Gate ability (recommended):
   ```php
-  config(['filament-queue-monitor.authorize' => fn () => auth()->user()->can('view-queue-monitor')]);
+  // AppServiceProvider::boot()
+  Gate::define('view-queue-monitor', fn ($user) => $user->isAdmin());
   ```
-- Or define a Gate: `Gate::define('view-queue-monitor', fn ($user) => $user->isAdmin());`
+  ```env
+  QUEUE_MONITOR_AUTHORIZE=view-queue-monitor
+  ```
+- A Closure also works when set at runtime, e.g. `config(['filament-queue-monitor.authorize' => fn ($user) => ...])` in a service provider. Do not put a Closure in the config file: `php artisan config:cache` cannot serialize it.
+
+Retrying and deleting failed jobs can be held to a stricter rule with `QUEUE_MONITOR_AUTHORIZE_ACTIONS`, which takes the same values. Without it, anyone who can see the pages can also act on failed jobs.
+
+The widgets follow the same rule, including when they appear on Filament's own dashboard.
 
 The packaged migrations use the configured metrics and completed-jobs table names. Configure them before running migrations; changing a name afterwards does not rename an existing table.
 
@@ -123,8 +137,9 @@ QUEUE_MONITOR_DRIVER=database
 
 ```env
 QUEUE_MONITOR_DRIVER=redis
-QUEUE_MONITOR_REDIS_CONNECTION=default
 ```
+
+The Redis connection is taken from the queue connection (`queue.connections.redis.connection`); set `QUEUE_MONITOR_REDIS_CONNECTION` only to override it. Reservation times are derived from the queue's `retry_after`, so keep it in the queue connection config.
 
 `QUEUE_MONITOR_REDIS_QUEUES` can contain a comma-separated allowlist of queue names. When empty, queue names are discovered with Redis `SCAN`.
 

@@ -72,7 +72,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
             return $this->cachedTableRecords;
         }
 
-        $records = collect($this->resolveAllRecords());
+        $records = collect($this->allRecords());
 
         $records = $this->applyFiltersToTableRecords($records);
 
@@ -113,7 +113,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
             return $this->cachedTableRecords->total();
         }
 
-        return $this->applyFiltersToTableRecords(collect($this->resolveAllRecords()))->count();
+        return $this->applyFiltersToTableRecords(collect($this->allRecords()))->count();
     }
 
     public function getTableRecordKey(Model | array $record): string
@@ -139,7 +139,7 @@ abstract class BaseQueueTablePage extends Page implements HasTable
             }
         }
 
-        foreach (QueueJob::hydrate($this->resolveAllRecords()) as $model) {
+        foreach (QueueJob::hydrate($this->allRecords()) as $model) {
             if ((string) $model->getKey() === (string) $key) {
                 return $model;
             }
@@ -154,6 +154,76 @@ abstract class BaseQueueTablePage extends Page implements HasTable
     }
 
     abstract protected function resolveAllRecords(): array;
+
+    /**
+     * Records for this request. Filament asks for them several times per
+     * render (records, count, filter options, action lookups), and every ask
+     * used to go back to the queue backend.
+     */
+    protected ?array $resolvedRecords = null;
+
+    protected bool $recordsTruncated = false;
+
+    protected function allRecords(): array
+    {
+        return $this->resolvedRecords ??= $this->bounded($this->resolveAllRecords());
+    }
+
+    /**
+     * Replaces the table trait's own flush, which only clears the paginator,
+     * so a reset or a finished action also re-reads the backend.
+     */
+    public function flushCachedTableRecords(): void
+    {
+        $this->cachedTableRecords = null;
+
+        $this->resolvedRecords = null;
+        $this->recordsTruncated = false;
+    }
+
+    /**
+     * The most rows a list page loads. Search, filters, sorting and paging all
+     * run in PHP over what was loaded, so without a ceiling a backlog of a
+     * million jobs was read into memory on every poll.
+     */
+    public static function listLimit(): int
+    {
+        $limit = config('filament-queue-monitor.list_limit', 1000);
+
+        return is_numeric($limit) && (int) $limit > 0 ? (int) $limit : 1000;
+    }
+
+    /**
+     * What to ask a driver for: one more than is shown, so a cut list can be
+     * told apart from one that happens to be exactly the limit long.
+     */
+    protected function fetchLimit(): int
+    {
+        return static::listLimit() + 1;
+    }
+
+    protected function bounded(iterable $items): array
+    {
+        $items = is_array($items) ? array_values($items) : iterator_to_array($items, false);
+
+        if (count($items) > static::listLimit()) {
+            $this->recordsTruncated = true;
+
+            return array_slice($items, 0, static::listLimit());
+        }
+
+        return $items;
+    }
+
+    public function truncationNotice(): ?string
+    {
+        // The table header renders before its rows, so load them first.
+        $this->allRecords();
+
+        return $this->recordsTruncated
+            ? Trans::get('common.list_truncated', ['limit' => static::listLimit()])
+            : null;
+    }
 
     abstract protected function getSearchableFields(): array;
 

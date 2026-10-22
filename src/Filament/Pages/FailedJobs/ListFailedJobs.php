@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\FailedJobs\ViewFailedJob;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\FailedJobInfo;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class ListFailedJobs extends BaseQueueTablePage
@@ -50,7 +51,7 @@ class ListFailedJobs extends BaseQueueTablePage
     protected function resolveAllRecords(): array
     {
         $driver = $this->getDriver();
-        $jobs = $driver->failedJobs();
+        $jobs = $this->bounded($driver->failedJobs($this->fetchLimit()));
 
         return array_map(function (FailedJobInfo $job): array {
             return [
@@ -72,11 +73,12 @@ class ListFailedJobs extends BaseQueueTablePage
 
         return $table
             ->query($this->getTableQuery())
+            ->description(fn (): ?string => $this->truncationNotice())
             ->poll($this->getTablePollingInterval())
             ->filters([
                 SelectFilter::make('job')
                     ->label(Trans::get('common.job'))
-                    ->options(fn (): array => collect($this->resolveAllRecords())
+                    ->options(fn (): array => collect($this->allRecords())
                         ->pluck('job', 'job')
                         ->reject(fn (?string $job): bool => blank($job))
                         ->mapWithKeys(fn (string $job): array => [$job => (string) Str::afterLast($job, '\\')])
@@ -84,7 +86,7 @@ class ListFailedJobs extends BaseQueueTablePage
                         ->toArray()),
                 SelectFilter::make('queue')
                     ->label(Trans::get('common.queue'))
-                    ->options(fn (): array => collect($this->resolveAllRecords())
+                    ->options(fn (): array => collect($this->allRecords())
                         ->pluck('queue', 'queue')
                         ->reject(fn (?string $queue): bool => blank($queue))
                         ->sort()
@@ -135,6 +137,8 @@ class ListFailedJobs extends BaseQueueTablePage
             ])
             ->actions([
                 $actionClass::make('retry')
+                    ->visible(fn (): bool => Access::canManage())
+                    ->authorize(fn (): bool => Access::canManage())
                     ->label(Trans::get('actions.retry'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('info')
@@ -142,6 +146,8 @@ class ListFailedJobs extends BaseQueueTablePage
                     ->modalHeading(Trans::get('actions.retry_heading'))
                     ->modalDescription(Trans::get('actions.retry_description'))
                     ->action(function ($record) {
+                        abort_unless(Access::canManage(), 403);
+
                         $this->getDriver()->retryFailedJob($record->id);
 
                         Notification::make()
@@ -151,6 +157,8 @@ class ListFailedJobs extends BaseQueueTablePage
                             ->send();
                     }),
                 $actionClass::make('delete')
+                    ->visible(fn (): bool => Access::canManage())
+                    ->authorize(fn (): bool => Access::canManage())
                     ->label(Trans::get('actions.delete'))
                     ->icon('heroicon-o-trash')
                     ->color('danger')
@@ -159,6 +167,8 @@ class ListFailedJobs extends BaseQueueTablePage
                     ->modalDescription(Trans::get('actions.delete_description'))
                     ->modalSubmitActionLabel(Trans::get('actions.delete'))
                     ->action(function ($record) {
+                        abort_unless(Access::canManage(), 403);
+
                         $this->getDriver()->deleteFailedJob($record->id);
 
                         Notification::make()

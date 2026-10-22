@@ -17,12 +17,18 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use BlkDem\FilamentQueueMonitor\Filament\Pages\Queues\ViewQueue;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\QueueJob;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\View\TablesRenderHook;
 
 class QueueActivityWidget extends BaseTableWidget
 {
+    public static function canView(): bool
+    {
+        return Access::canAccess();
+    }
+
     protected static bool $isLazy = false;
 
     protected int | string | array $columnSpan = 'full';
@@ -202,12 +208,14 @@ class QueueActivityWidget extends BaseTableWidget
         foreach ($driver->getQueues() as $queueInfo) {
             $queue = $queueInfo->name;
 
-            $pending = collect($driver->pendingJobs($queue));
-            $processing = collect($driver->processingJobs($queue));
+            // Asked for only what is kept: the widget polls on the dashboard and
+            // used to read every job in every queue to show five of each.
+            $limit = $perQueue > 0 ? $perQueue : \BlkDem\FilamentQueueMonitor\Filament\Pages\BaseQueueTablePage::listLimit();
 
-            $keep = $perQueue > 0
-                ? $pending->take($perQueue)->concat($processing->take($perQueue))
-                : $pending->concat($processing);
+            $pending = collect($driver->pendingJobs($queue, $limit))->take($limit);
+            $processing = collect($driver->processingJobs($queue, $limit))->take($limit);
+
+            $keep = $pending->concat($processing);
 
             foreach ($keep as $job) {
                 $records[] = [

@@ -2,6 +2,8 @@
 
 namespace BlkDem\FilamentQueueMonitor\QueueMonitor\Models;
 
+use BlkDem\FilamentQueueMonitor\Support\MonitoredConnection;
+
 use Illuminate\Database\Eloquent\Model;
 
 class QueueJob extends Model
@@ -85,24 +87,10 @@ class QueueJob extends Model
 
     protected function resolveQueueConnectionName(): string
     {
-        $queueConnection = config('queue.default', 'database');
-
-        if (! is_string($queueConnection) || $queueConnection === 'sync') {
-            $queueConnection = 'database';
-        }
-
-        // This model mirrors the database `jobs` table, so it only applies when
-        // the monitored driver and the queue connection both read that table.
-        // A redis queue connection has no `jobs` table and its `connection`
-        // value names a redis connection, not a database one.
-        if (
-            config('filament-queue-monitor.driver') === 'redis'
-            || config("queue.connections.{$queueConnection}.driver") === 'redis'
-        ) {
-            return 'database';
-        }
-
-        return $queueConnection;
+        // This model mirrors the database `jobs` table, so it only ever applies
+        // to a database backed connection. A redis queue connection has no
+        // `jobs` table and its `connection` value names a redis connection.
+        return MonitoredConnection::nameFor('database');
     }
 
     protected function resolveQueueTable(): string

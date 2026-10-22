@@ -10,6 +10,7 @@ use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Support\HandlesFailedJobs;
+use BlkDem\FilamentQueueMonitor\Support\MonitoredConnection;
 
 class DatabaseQueueMonitorDriver implements QueueMonitorDriver
 {
@@ -30,18 +31,7 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
 
     public function __construct()
     {
-        $queueConnection = config('queue.default', 'database');
-
-        if (! is_string($queueConnection) || $queueConnection === 'sync') {
-            $queueConnection = 'database';
-        }
-
-        if (
-            config('filament-queue-monitor.driver') === 'database'
-            && config("queue.connections.{$queueConnection}.driver") === 'redis'
-        ) {
-            $queueConnection = 'database';
-        }
+        $queueConnection = MonitoredConnection::nameFor('database');
 
         $this->table = config("queue.connections.{$queueConnection}.table") ?: 'jobs';
         $this->queueConnection = $queueConnection;
@@ -153,51 +143,50 @@ class DatabaseQueueMonitorDriver implements QueueMonitorDriver
         );
     }
 
-    public function pendingJobs(string $queue): iterable
+    public function pendingJobs(string $queue, ?int $limit = null): iterable
     {
         $rows = $this->database->table($this->table)
             ->where('queue', $queue)
             ->whereNull('reserved_at')
             ->where('available_at', '<=', now()->timestamp)
             ->orderBy('id', 'asc')
+            ->when($limit !== null && $limit > 0, fn ($query) => $query->limit($limit))
             ->get();
 
         return $this->rowsToJobInfo($rows);
     }
 
-    public function processingJobs(string $queue): iterable
+    public function processingJobs(string $queue, ?int $limit = null): iterable
     {
         $rows = $this->database->table($this->table)
             ->where('queue', $queue)
             ->whereNotNull('reserved_at')
             ->orderBy('reserved_at', 'desc')
+            ->when($limit !== null && $limit > 0, fn ($query) => $query->limit($limit))
             ->get();
 
         return $this->rowsToJobInfo($rows);
     }
 
-    public function delayedJobs(string $queue): iterable
+    public function delayedJobs(string $queue, ?int $limit = null): iterable
     {
         $rows = $this->database->table($this->table)
             ->where('queue', $queue)
             ->whereNull('reserved_at')
             ->where('available_at', '>', now()->timestamp)
             ->orderBy('available_at', 'asc')
+            ->when($limit !== null && $limit > 0, fn ($query) => $query->limit($limit))
             ->get();
 
         return $this->rowsToJobInfo($rows);
     }
 
-    public function failedJobs(): iterable
+    public function failedJobs(?int $limit = null): iterable
     {
-        $failer = $this->getFailer();
-        $jobs = [];
-
-        foreach (($failer->all() ?? []) as $record) {
-            $jobs[] = $this->parseFailedRecord($record);
-        }
-
-        return $jobs;
+        return array_map(
+            fn (object|array $record): FailedJobInfo => $this->parseFailedRecord($record),
+            $this->failedRecords($limit),
+        );
     }
 
     public function stuckJobsCount(int $thresholdHours): int
