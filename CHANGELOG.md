@@ -5,6 +5,17 @@ see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-22
+
+### Fixed
+
+- On Laravel 12 the failed jobs list keyed records by their numeric id while
+  the `database-uuids` failer looks them up by uuid, so viewing, retrying and
+  deleting a failed job from the list failed: the page returned 404 and the
+  actions did nothing.
+- On Laravel 10 and 11 the failed jobs list read the whole `failed_jobs` table
+  instead of applying `list_limit` in SQL.
+
 ## [0.1.0] - 2026-10-22
 
 ### Fixed
@@ -90,5 +101,6 @@ see [RELEASING.md](RELEASING.md).
 - Updating this library does not update the application's framework lock file.
   Resolve security updates in the consuming application as well.
 
-[Unreleased]: https://github.com/BlkDem/filament-queue-monitor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/BlkDem/filament-queue-monitor/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/BlkDem/filament-queue-monitor/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/BlkDem/filament-queue-monitor/releases/tag/v0.1.0

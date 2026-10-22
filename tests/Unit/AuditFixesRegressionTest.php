@@ -315,10 +315,13 @@ describe('bounded lists', function () {
             ]);
         }
 
-        $jobs = (new DatabaseQueueMonitorDriver)->failedJobs(4);
+        $driver = new DatabaseQueueMonitorDriver;
+        $jobs = $driver->failedJobs(4);
 
         expect($jobs)->toHaveCount(4)
-            ->and($jobs[0]->uuid)->toBe('failed-12');
+            ->and($jobs[0]->uuid)->toBe('failed-12')
+            ->and($jobs[0]->id)->toBe('failed-12')
+            ->and($driver->findFailedJob($jobs[0]->id)?->id)->toBe('failed-12');
     });
 
     it('caps a list page and says so', function () {

@@ -35,17 +35,41 @@ trait HandlesFailedJobs
         $failer = $this->getFailer();
         $limit = $limit !== null && $limit > 0 ? $limit : null;
 
-        if ($limit !== null && is_callable([$failer, 'getTable'])) {
-            $query = $failer->getTable();
+        $query = $limit !== null ? $this->failedJobsQuery($failer) : null;
 
-            if ($query instanceof \Illuminate\Database\Query\Builder) {
-                return $query->orderBy('id', 'desc')->limit($limit)->get()->all();
+        if ($query !== null) {
+            $records = $query->orderBy('id', 'desc')->limit($limit)->get()->all();
+
+            // all() and find() of the uuid provider key records by uuid, and
+            // retry and delete look them up that way, so the raw rows must too.
+            if ($failer instanceof \Illuminate\Queue\Failed\DatabaseUuidFailedJobProvider) {
+                foreach ($records as $record) {
+                    $record->id = $record->uuid;
+                }
             }
+
+            return $records;
         }
 
         $records = array_values((array) ($failer->all() ?? []));
 
         return $limit !== null ? array_slice($records, 0, $limit) : $records;
+    }
+
+    /**
+     * getTable() is public from Laravel 12 and protected before it, so it is
+     * reached from inside the provider's scope.
+     */
+    protected function failedJobsQuery(object $failer): ?\Illuminate\Database\Query\Builder
+    {
+        if (! $failer instanceof \Illuminate\Queue\Failed\DatabaseFailedJobProvider
+            && ! $failer instanceof \Illuminate\Queue\Failed\DatabaseUuidFailedJobProvider) {
+            return null;
+        }
+
+        $query = (fn () => $this->getTable())->call($failer);
+
+        return $query instanceof \Illuminate\Database\Query\Builder ? $query : null;
     }
 
     protected function resetAttempts(string $payload): string
