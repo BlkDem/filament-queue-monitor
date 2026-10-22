@@ -2,8 +2,8 @@
 
 ## Policy
 
-Versions follow [Semantic Versioning](https://semver.org/). The first planned
-release is **0.1.0**; it is not published by this change.
+Versions follow [Semantic Versioning](https://semver.org/). The first release
+is **0.1.0**.
 
 - `0.MINOR.0`: features or breaking changes during initial development. Document breaking changes explicitly.
 - `0.MINOR.PATCH`: backwards-compatible bug fixes and documentation corrections.
@@ -19,7 +19,7 @@ it is not the package release version.
 1. Review the diff and confirm migrations and upgrade notes. Never rename an
    already released migration.
 2. Move the relevant entries from `Unreleased` in `CHANGELOG.md` to a dated
-   release section. For the first release, use `0.1.0`.
+   release section.
 3. Run `composer validate --strict --no-check-lock`, `composer test`, and
    `composer audit` with freshly resolved dependencies.
 4. Require passing compatibility and security CI jobs. Laravel 10 and 11 are

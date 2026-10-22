@@ -1,9 +1,11 @@
 # Changelog
 
 All notable changes are documented here. Versions follow Semantic Versioning;
-see [RELEASING.md](RELEASING.md). No release has been tagged yet.
+see [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-10-22
 
 ### Fixed
 
@@ -82,9 +84,11 @@ see [RELEASING.md](RELEASING.md). No release has been tagged yet.
 
 ### Upgrade notes
 
-- Planned initial release: `0.1.0`; no tag or publication is created automatically.
 - Set table names before migrating. Editing configuration does not rename tables.
 - Migration index fixes apply when migrations execute; installations that already
   ran the job-column migration should inspect legacy indexes (see `AUDIT.md`).
 - Updating this library does not update the application's framework lock file.
   Resolve security updates in the consuming application as well.
+
+[Unreleased]: https://github.com/BlkDem/filament-queue-monitor/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/BlkDem/filament-queue-monitor/releases/tag/v0.1.0
