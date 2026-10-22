@@ -1,6 +1,9 @@
 @php
     use Filament\Support\Facades\FilamentView;
-    use Filament\Support\View\ComponentAttributeBag;
+    // Laravel's bag, not Filament\Support\View\ComponentAttributeBag: that one
+    // only exists in Filament 4, and on Filament 3 the widget took the whole
+    // panel dashboard down with a missing class error.
+    use Illuminate\View\ComponentAttributeBag;
     use Filament\Widgets\View\WidgetsRenderHook;
 
     $requiresGroupCollapseInit = ! method_exists(\Filament\Tables\Table\Concerns\CanGroupRecords::class, 'collapsedGroupsByDefault');

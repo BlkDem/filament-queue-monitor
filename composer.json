@@ -20,10 +20,10 @@
         "php": "^8.2",
         "ext-json": "*",
         "ext-pdo": "*",
-        "illuminate/support": "^10.0 || ^11.0 || ^12.0",
-        "illuminate/queue": "^10.0 || ^11.0 || ^12.0",
-        "illuminate/events": "^10.0 || ^11.0 || ^12.0",
-        "illuminate/database": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/support": "^10.43 || ^11.0 || ^12.0",
+        "illuminate/queue": "^10.43 || ^11.0 || ^12.0",
+        "illuminate/events": "^10.43 || ^11.0 || ^12.0",
+        "illuminate/database": "^10.43 || ^11.0 || ^12.0",
         "filament/filament": "^3.3 || ^4.0"
     },
     "require-dev": {

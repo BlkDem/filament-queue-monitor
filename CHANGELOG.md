@@ -7,6 +7,14 @@ see [RELEASING.md](RELEASING.md). No release has been tagged yet.
 
 ### Fixed
 
+- Installation failed on Laravel 10: the metrics migration used
+  `float(precision: ...)`, a Laravel 11 signature. Runtime columns are now
+  `double`, which also stops Laravel 10 on MySQL rounding run times to 0.01 s.
+- On Filament 3 the activity and job breakdown widgets used a Filament 4 only
+  class, so the panel dashboard and the monitor dashboard returned a 500.
+- The minimum Laravel 10 version is now 10.43, the first with
+  `Schema::hasIndex()`, which the migrations use.
+
 - Metric writes can no longer affect the job being monitored. A failed write
   from `JobProcessed` raised `JobExceptionOccurred` for a job that had
   succeeded, skipped later listeners and could stop the worker on a lost
@@ -49,6 +57,8 @@ see [RELEASING.md](RELEASING.md). No release has been tagged yet.
 - Make test route registration and icon rendering compatible with Filament 4.
 
 ### Added
+
+- Widget rendering tests through Livewire with the Filament providers loaded.
 
 - `authorize_actions` / `QUEUE_MONITOR_AUTHORIZE_ACTIONS` for retry and delete.
 - `list_limit` / `QUEUE_MONITOR_LIST_LIMIT`, with a notice when a list is cut.

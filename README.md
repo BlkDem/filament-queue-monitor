@@ -1,14 +1,22 @@
 # Filament Queue Monitor
 
-A lightweight queue monitoring plugin for Filament. It supports database and Redis queue drivers and is compatible with Laravel 10, 11, and 12 and Filament 3 and 4.
+A lightweight queue monitoring plugin for Filament. It supports database and Redis queue drivers and is compatible with Laravel 10.43+, 11, and 12 and Filament 3 and 4.
 
 ## Requirements
 
 - PHP 8.2 or newer
-- Laravel 10, 11, or 12
+- Laravel 10.43+, 11, or 12
 - Filament 3.3 or 4
 - A database connection for database queues and metrics
 - The `ext-redis` extension only when Redis queue monitoring is enabled
+
+### Laravel 10
+
+Laravel 10 no longer receives security fixes, and Composer 2.9+ refuses to
+install any 10.x release because of published advisories. If you must stay on
+it, the application has to opt out of that check (for example
+`composer update --no-security-blocking`, or `policy.advisories` in its
+`composer.json`). Prefer upgrading the framework.
 
 ## Installation
 

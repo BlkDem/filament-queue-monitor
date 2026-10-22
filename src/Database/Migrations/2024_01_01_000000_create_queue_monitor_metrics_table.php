@@ -29,8 +29,11 @@ return new class extends Migration
             $table->string('period', 32)->index();
             $table->unsignedInteger('processed')->default(0);
             $table->unsignedInteger('failed')->default(0);
-            $table->float('avg_runtime', precision: 5)->nullable();
-            $table->float('max_runtime', precision: 5)->nullable();
+            // double rather than float(precision: ...): the named argument
+            // only exists from Laravel 11, and on Laravel 10 the migration
+            // failed with "Unknown named parameter $precision".
+            $table->double('avg_runtime')->nullable();
+            $table->double('max_runtime')->nullable();
             $table->timestamps();
 
             // Derived from the table name: index names are global per database,

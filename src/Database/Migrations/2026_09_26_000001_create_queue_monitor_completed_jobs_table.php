@@ -31,7 +31,9 @@ return new class extends Migration
             // Job instance identifier, when the backend exposes one.
             $table->string('uuid')->nullable()->index();
 
-            $table->float('runtime')->nullable();
+            // Laravel 10 reads float() as FLOAT(8,2) on MySQL, which rounds a
+            // runtime to the hundredth of a second; double is exact everywhere.
+            $table->double('runtime')->nullable();
             $table->timestamp('finished_at')->index();
 
             $table->timestamps();
