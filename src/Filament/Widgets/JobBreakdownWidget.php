@@ -18,10 +18,16 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Models\Metric;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Statistics\MetricsStorage;
+use BlkDem\FilamentQueueMonitor\Support\Access;
 use BlkDem\FilamentQueueMonitor\Support\Trans;
 
 class JobBreakdownWidget extends BaseTableWidget
 {
+    public static function canView(): bool
+    {
+        return Access::canAccess();
+    }
+
     protected static bool $isLazy = false;
 
     protected int | string | array $columnSpan = 'full';
@@ -251,9 +257,7 @@ class JobBreakdownWidget extends BaseTableWidget
      */
     protected function currentConnection(): string
     {
-        $connection = config('queue.default', 'database');
-
-        return is_string($connection) && $connection !== '' ? $connection : 'database';
+        return \BlkDem\FilamentQueueMonitor\Support\MonitoredConnection::name();
     }
 
     protected function periodStart(): string

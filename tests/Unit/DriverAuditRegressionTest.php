@@ -85,10 +85,11 @@ it('supports array records from failed job providers', function () {
         ->and($driver->findFailedJob('array-id')->failedAt->format('Y-m-d H:i:s'))->toBe('2025-01-02 03:04:05');
 });
 
-it('invalidates failure caches after deleting a failed job', function (string $driverClass) {
+it('invalidates failure caches after deleting a failed job', function (string $driverClass, string $connection) {
+    config()->set('filament-queue-monitor.driver', $connection);
     DB::table('failed_jobs')->insert([
         'uuid' => 'cached-failure',
-        'connection' => 'database',
+        'connection' => $connection,
         'queue' => 'default',
         'payload' => '{}',
         'exception' => 'failure',
@@ -97,12 +98,17 @@ it('invalidates failure caches after deleting a failed job', function (string $d
     expect($driver->failedJobsCount())->toBe(1);
     $driver->deleteFailedJob('cached-failure');
     expect($driver->failedJobsCount())->toBe(0);
-})->with([DatabaseQueueMonitorDriver::class, RedisQueueMonitorDriver::class]);
+})->with([
+    'database' => [DatabaseQueueMonitorDriver::class, 'database'],
+    'redis' => [RedisQueueMonitorDriver::class, 'redis'],
+]);
 
-it('invalidates failure caches after retrying a failed job', function (string $driverClass) {
+it('invalidates failure caches after retrying a failed job', function (string $driverClass, string $connection) {
+    config()->set('filament-queue-monitor.driver', $connection);
+    \Illuminate\Support\Facades\Redis::connection()->del('queues:default');
     DB::table('failed_jobs')->insert([
         'uuid' => 'retried-failure',
-        'connection' => 'database',
+        'connection' => $connection,
         'queue' => 'default',
         'payload' => json_encode(['attempts' => 4, 'data' => ['command' => ['invalid']]]),
         'exception' => 'failure',
@@ -111,9 +117,18 @@ it('invalidates failure caches after retrying a failed job', function (string $d
     expect($driver->failedJobsCount())->toBe(1);
     $driver->retryFailedJob('retried-failure');
 
+    $pushed = $connection === 'redis'
+        ? \Illuminate\Support\Facades\Redis::connection()->lindex('queues:default', 0)
+        : DB::table('jobs')->value('payload');
+
     expect($driver->failedJobsCount())->toBe(0)
-        ->and(json_decode(DB::table('jobs')->value('payload'), true)['attempts'])->toBe(0);
-})->with([DatabaseQueueMonitorDriver::class, RedisQueueMonitorDriver::class]);
+        ->and(json_decode($pushed, true)['attempts'])->toBe(0);
+
+    \Illuminate\Support\Facades\Redis::connection()->del('queues:default');
+})->with([
+    'database' => [DatabaseQueueMonitorDriver::class, 'database'],
+    'redis' => [RedisQueueMonitorDriver::class, 'redis'],
+]);
 
 it('leaves malformed command values intact while refreshing retry deadlines', function () {
     $driver = new class extends DatabaseQueueMonitorDriver

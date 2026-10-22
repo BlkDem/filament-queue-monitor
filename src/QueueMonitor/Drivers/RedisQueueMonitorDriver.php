@@ -12,6 +12,7 @@ use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\JobInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueInfo;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\DTO\QueueStats;
 use BlkDem\FilamentQueueMonitor\QueueMonitor\Support\HandlesFailedJobs;
+use BlkDem\FilamentQueueMonitor\Support\MonitoredConnection;
 use RuntimeException;
 use Throwable;
 
@@ -20,6 +21,12 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
     use HandlesFailedJobs;
 
     protected ?string $connection;
+
+    /**
+     * The queue connection being monitored, as opposed to $connection, which
+     * is the redis connection it stores its keys on.
+     */
+    protected string $queueConnection;
 
     /**
      * @var list<QueueInfo>|null
@@ -33,7 +40,15 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         $root = Redis::getFacadeRoot();
 
         $this->redis = $redis ?? ($root instanceof RedisFactory ? $root : null);
-        $this->connection = $connection ?? config('filament-queue-monitor.redis.connection', 'default') ?: 'default';
+        $this->queueConnection = MonitoredConnection::nameFor('redis');
+
+        // The queue's own redis connection unless one is configured here. It
+        // used to default to "default", so a queue on a dedicated redis
+        // connection was shown as empty.
+        $this->connection = $connection
+            ?: config('filament-queue-monitor.redis.connection')
+            ?: config("queue.connections.{$this->queueConnection}.connection")
+            ?: 'default';
     }
 
     public function getQueues(): array
@@ -70,10 +85,7 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
 
     protected function fallbackQueueName(): string
     {
-        // The monitored queue connection, not $this->connection, which is the
-        // redis connection name.
-        $queueConnection = config('queue.default', 'redis');
-        $configured = config("queue.connections.{$queueConnection}.queue", 'default');
+        $configured = config("queue.connections.{$this->queueConnection}.queue", 'default');
         $configured = is_array($configured) ? ($configured[0] ?? 'default') : $configured;
 
         return is_string($configured) && $configured !== '' ? $configured : 'default';
@@ -96,9 +108,9 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         );
     }
 
-    public function pendingJobs(string $queue): array
+    public function pendingJobs(string $queue, ?int $limit = null): array
     {
-        $payloads = $this->redis()->lrange($this->getQueueKey($queue), 0, -1);
+        $payloads = $this->redis()->lrange($this->getQueueKey($queue), 0, $this->rangeEnd($limit));
         $jobs = [];
 
         foreach ((array) $payloads as $payload) {
@@ -108,9 +120,9 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         return $jobs;
     }
 
-    public function processingJobs(string $queue): array
+    public function processingJobs(string $queue, ?int $limit = null): array
     {
-        $entries = $this->redis()->zrange($this->getQueueKey($queue).':reserved', 0, -1, true);
+        $entries = $this->redis()->zrange($this->getQueueKey($queue).':reserved', 0, $this->rangeEnd($limit), true);
         $jobs = [];
 
         foreach ($this->scoredEntries($entries) as [$payload, $score]) {
@@ -124,7 +136,7 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
                 attempts: $job->attempts,
                 createdAt: $job->createdAt,
                 availableAt: null,
-                reservedAt: $this->timestampToCarbon($score),
+                reservedAt: $this->reservedAtFromScore($score),
                 payload: $job->payload,
             );
         }
@@ -132,9 +144,9 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         return $jobs;
     }
 
-    public function delayedJobs(string $queue): array
+    public function delayedJobs(string $queue, ?int $limit = null): array
     {
-        $entries = $this->redis()->zrange($this->getQueueKey($queue).':delayed', 0, -1, true);
+        $entries = $this->redis()->zrange($this->getQueueKey($queue).':delayed', 0, $this->rangeEnd($limit), true);
         $jobs = [];
 
         foreach ($this->scoredEntries($entries) as [$payload, $score]) {
@@ -174,7 +186,7 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         }
 
         // Both sets are scored by timestamp, so the newest is the highest score.
-        $reservedAt = $this->newestScore($redis, $queueKey.':reserved');
+        $reservedAt = $this->newestScore($redis, $queueKey.':reserved')?->subSeconds($this->retryAfter());
         $delayedAt = $this->newestScore($redis, $queueKey.':delayed');
 
         $lastActivityAt = null;
@@ -214,21 +226,27 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         return $newest;
     }
 
-    public function failedJobs(): array
+    public function failedJobs(?int $limit = null): array
     {
-        $jobs = [];
-        $failer = $this->getFailer();
+        return array_map(
+            fn (object|array $record): FailedJobInfo => $this->parseFailedRecord($record),
+            $this->failedRecords($limit),
+        );
+    }
 
-        foreach (($failer->all() ?? []) as $record) {
-            $jobs[] = $this->parseFailedRecord($record);
-        }
-
-        return $jobs;
+    /**
+     * Last index for LRANGE / ZRANGE, which are inclusive; -1 reads to the end.
+     */
+    protected function rangeEnd(?int $limit): int
+    {
+        return $limit !== null && $limit > 0 ? $limit - 1 : -1;
     }
 
     public function stuckJobsCount(int $thresholdHours): int
     {
-        $threshold = now()->subHours($thresholdHours)->timestamp;
+        // Reserved entries are scored by when the reservation expires, so a job
+        // reserved before the threshold has a score up to retry_after later.
+        $threshold = now()->subHours($thresholdHours)->timestamp + $this->retryAfter();
         $count = 0;
 
         foreach ($this->knownQueues() as $queue) {
@@ -281,6 +299,29 @@ class RedisQueueMonitorDriver implements QueueMonitorDriver
         $this->getFailer()->forget($id);
         $this->forgetCachedFailedCounts();
         $this->forgetCachedQueues();
+    }
+
+    protected function monitoredQueueConnection(): string
+    {
+        return $this->queueConnection;
+    }
+
+    /**
+     * How long a reservation lasts. Laravel scores the reserved set with the
+     * moment the reservation expires, now plus retry_after, rather than the
+     * moment the job was taken, so reading the score as the reservation time
+     * put it in the future.
+     */
+    protected function retryAfter(): int
+    {
+        $retryAfter = config("queue.connections.{$this->queueConnection}.retry_after");
+
+        return is_numeric($retryAfter) ? max(0, (int) $retryAfter) : 60;
+    }
+
+    protected function reservedAtFromScore(mixed $score): ?Carbon
+    {
+        return $this->timestampToCarbon($score)?->subSeconds($this->retryAfter());
     }
 
     protected function redis(): Connection

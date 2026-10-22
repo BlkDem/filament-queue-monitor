@@ -21,9 +21,12 @@ return new class extends Migration
 
         Schema::create($tableName, function (Blueprint $table) use ($tableName) {
             $table->id();
-            $table->string('connection')->index();
-            $table->string('queue')->index();
-            $table->string('period')->index();
+            // Sized so the later connection/queue/job/period unique index fits
+            // MySQL's 3072 byte key limit under utf8mb4; four 255 character
+            // columns need 4080. A period is "Y-m-d H:i:s", 19 characters.
+            $table->string('connection', 100)->index();
+            $table->string('queue', 191)->index();
+            $table->string('period', 32)->index();
             $table->unsignedInteger('processed')->default(0);
             $table->unsignedInteger('failed')->default(0);
             $table->float('avg_runtime', precision: 5)->nullable();

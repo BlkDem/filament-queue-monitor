@@ -15,10 +15,10 @@ describe('RedisQueueMonitorDriver', function () {
         config()->set('filament-queue-monitor.driver', 'redis');
         config()->set('database.redis.default', [
             'driver' => 'redis',
-            'host' => '127.0.0.1',
+            'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => null,
             'port' => 6379,
-            'database' => 0,
+            'database' => (int) env('QUEUE_MONITOR_TEST_REDIS_DB', 15),
             'prefix' => '',
         ]);
     });
